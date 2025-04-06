@@ -40,28 +40,34 @@ function App() {
             style: {
               borderRadius: '8px',
               padding: '16px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              fontWeight: '500',
             },
             // Success toasts (green)
             success: {
               style: {
                 background: '#10B981',
                 color: 'white',
+                border: '1px solid #059669',
               },
               iconTheme: {
                 primary: 'white',
-                secondary: '#10B981',
+                secondary: '#059669',
               },
+              duration: 4000,
             },
             // Error toasts (red)
             error: {
               style: {
                 background: '#EF4444',
                 color: 'white',
+                border: '1px solid #DC2626',
               },
               iconTheme: {
                 primary: 'white',
-                secondary: '#EF4444',
+                secondary: '#DC2626',
               },
+              duration: 5000,
             },
           }}
         />

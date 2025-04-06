@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 import { authService } from '@/services';
+import { showSuccess, showError } from '@/utils/toast';
 import {
   AuthContextType,
   AuthState,
@@ -131,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         
         // Show success message
-        toast.success('Logged in successfully');
+        showSuccess('Logged in successfully');
         
         // Use window.location for a full page navigation instead of React Router
         setTimeout(() => {
@@ -146,12 +147,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: response.message || 'Failed to login',
       }));
+      
+      showError(response.message || 'Failed to login');
     } catch (error: any) {
       setState(prev => ({
         ...prev,
         isLoading: false,
         error: error.message || 'An unexpected error occurred',
       }));
+      
+      showError(error.message || 'An unexpected error occurred');
     }
   }, [navigate]);
 
@@ -173,7 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         
         // Show success message in green
-        toast.success('Registration successful');
+        showSuccess('Registration successful');
         
         // Use window.location for a full page navigation instead of React Router
         setTimeout(() => {
@@ -188,12 +193,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: response.message || 'Failed to register',
       }));
+      
+      showError(response.message || 'Failed to register');
     } catch (error: any) {
       setState(prev => ({
         ...prev,
         isLoading: false,
         error: error.message || 'An unexpected error occurred',
       }));
+      
+      showError(error.message || 'An unexpected error occurred');
     }
   }, [navigate]);
 
@@ -204,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...initialState,
       isLoading: false,
     });
-    toast.success('Logged out successfully');
+    showSuccess('Logged out successfully');
     navigate('/login');
   }, [navigate]);
 
@@ -218,7 +227,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState(prev => ({ ...prev, isLoading: false }));
       
       if (response.success) {
-        toast.success(response.message || 'Password reset email sent');
+        showSuccess(response.message || 'Password reset email sent');
         return;
       }
       
@@ -226,12 +235,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...prev,
         error: response.message || 'Failed to process forgot password request',
       }));
+      
+      showError(response.message || 'Failed to process forgot password request');
     } catch (error: any) {
       setState(prev => ({
         ...prev,
         isLoading: false,
         error: error.message || 'An unexpected error occurred',
       }));
+      
+      showError(error.message || 'An unexpected error occurred');
     }
   }, []);
 
@@ -245,7 +258,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState(prev => ({ ...prev, isLoading: false }));
       
       if (response.success) {
-        toast.success(response.message || 'Password reset successful');
+        showSuccess(response.message || 'Password reset successful');
         navigate('/login');
         return;
       }
@@ -254,12 +267,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...prev,
         error: response.message || 'Failed to reset password',
       }));
+      
+      showError(response.message || 'Failed to reset password');
     } catch (error: any) {
       setState(prev => ({
         ...prev,
         isLoading: false,
         error: error.message || 'An unexpected error occurred',
       }));
+      
+      showError(error.message || 'An unexpected error occurred');
     }
   }, [navigate]);
 
@@ -279,7 +296,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           error: null,
         }));
         
-        toast.success(response.message || 'Profile updated successfully');
+        showSuccess(response.message || 'Profile updated successfully');
         return;
       }
       
@@ -288,12 +305,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         error: response.message || 'Failed to update profile',
       }));
+      
+      showError(response.message || 'Failed to update profile');
     } catch (error: any) {
       setState(prev => ({
         ...prev,
         isLoading: false,
         error: error.message || 'An unexpected error occurred',
       }));
+      
+      showError(error.message || 'An unexpected error occurred');
     }
   }, []);
 
