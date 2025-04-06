@@ -1,0 +1,144 @@
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const { StatusCodes } = require('http-status-codes');
+const path = require('path');
+const fs = require('fs');
+
+// Import middleware
+const { errorHandlerMiddleware, apiLimiter } = require('../api/middleware');
+
+// Import routes
+const routes = require('../api/routes');
+
+// Import config
+const env = require('../config/env');
+const logger = require('../config/logger');
+
+// Create directory for logs if it doesn't exist
+const logsDir = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+
+/**
+ * Initialize Express server
+ * @param {Object} app - Express app instance
+ */
+const initExpress = (app) => {
+  // Security middleware - configure based on environment
+  app.use(helmet({
+    contentSecurityPolicy: env.isProduction() ? undefined : false
+  }));
+  
+  // CORS configuration
+  const corsOptions = {
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, etc)
+      if (!origin) {
+        return callback(null, true);
+      }
+      
+      // Check against allowed origins
+      if (env.isDevelopment()) {
+        // In development, allow all origins
+        return callback(null, true);
+      } else {
+        // In production, check against allowed origins list
+        if (env.ALLOWED_ORIGINS.indexOf(origin) !== -1 || env.ALLOWED_ORIGINS.includes('*')) {
+          return callback(null, true);
+        } else {
+          return callback(new Error('CORS: Not allowed by CORS'), false);
+        }
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-HTTP-Method-Override', 'Accept'],
+    exposedHeaders: ['X-Total-Count', 'X-Pagination-Total', 'X-Request-ID'],
+    credentials: true,
+    maxAge: 86400, // 24 hours
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  };
+  
+  app.use(cors(corsOptions));
+  
+  // Request ID middleware for request tracking
+  app.use((req, res, next) => {
+    const requestId = req.headers['x-request-id'] || `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    req.requestId = requestId;
+    res.setHeader('X-Request-ID', requestId);
+    next();
+  });
+  
+  // Request logging
+  if (env.isDevelopment()) {
+    // Verbose logging for development
+    app.use(morgan('dev'));
+  } else {
+    // Create a write stream for access logs
+    const accessLogStream = fs.createWriteStream(
+      path.join(logsDir, 'access.log'),
+      { flags: 'a' }
+    );
+    
+    // Define a custom logging format to include request ID
+    const customFormat = ':remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent" :response-time ms :req[x-request-id]';
+    
+    // Log to file in production
+    app.use(morgan(customFormat, { stream: accessLogStream }));
+    
+    // Also log to console for non-development
+    app.use(morgan(customFormat, { stream: logger.stream }));
+  }
+  
+  // Body parsers with increased limits
+  app.use(express.json({ 
+    limit: '2mb',
+    strict: true,
+    verify: (req, res, buf) => {
+      // Store raw body for signature verification if needed
+      if (buf && buf.length) {
+        req.rawBody = buf;
+      }
+    }
+  }));
+  app.use(express.urlencoded({ 
+    extended: true, 
+    limit: '2mb',
+    parameterLimit: 1000
+  }));
+  
+  // Rate limiting for all API requests
+  app.use(apiLimiter);
+  
+  // API routes
+  app.use(env.API_PREFIX, routes);
+  
+  // Health check endpoint
+  app.get('/health', (req, res) => {
+    res.status(StatusCodes.OK).json({
+      status: 'UP',
+      timestamp: new Date().toISOString(),
+      environment: env.NODE_ENV,
+      version: process.env.npm_package_version || '1.0.0',
+    });
+  });
+  
+  // 404 handler
+  app.use((req, res, next) => {
+    res.status(StatusCodes.NOT_FOUND).json({
+      success: false,
+      message: `Route not found: ${req.method} ${req.originalUrl}`,
+      requestId: req.requestId
+    });
+  });
+  
+  // Global error handler
+  app.use(errorHandlerMiddleware);
+  
+  return app;
+};
+
+module.exports = initExpress; 
