@@ -27,6 +27,10 @@ if (!fs.existsSync(logsDir)) {
  * @param {Object} app - Express app instance
  */
 const initExpress = (app) => {
+  // Trust the first proxy hop (common for hosting platforms like Render)
+  // This is needed for express-rate-limit to get the correct client IP
+  app.set('trust proxy', 1);
+  
   // CORS must be enabled BEFORE any other middleware
   // Always allow requests from the Netlify frontend
   const allowedOrigins = ['https://lustrous-tartufo-9102a1.netlify.app', 'http://localhost:3000', 'http://localhost:5173'];
