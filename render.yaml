@@ -5,8 +5,8 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: cd server && npm install
-    startCommand: cd server && npm start
+    buildCommand: npm install
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
@@ -22,6 +22,14 @@ services:
         value: 1d
       - key: MONGODB_URI
         sync: false # Add this manually in the dashboard
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX
+        value: 100
+      - key: MAX_FILE_SIZE_MB
+        value: 50
+      - key: LOG_LEVEL
+        value: info
     healthCheckPath: /health
     autoDeploy: true
   - type: web
