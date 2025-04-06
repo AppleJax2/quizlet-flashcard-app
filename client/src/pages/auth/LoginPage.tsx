@@ -51,6 +51,11 @@ export default function LoginPage() {
     try {
       await login(data.email, data.password);
       toast.success('Logged in successfully!');
+      
+      setTimeout(() => {
+        window.location.href = `${window.location.origin}/dashboard`;
+      }, 800);
+      
     } catch (err) {
       console.error('Login failed:', err);
     }
