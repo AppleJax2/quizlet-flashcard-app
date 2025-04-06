@@ -1,6 +1,30 @@
 services:
   # Web Service for the Quizlet Flashcard Generator
   - type: web
+    name: quizlet-flashcard-api
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5001
+      - key: API_PREFIX
+        value: /api/v1
+      - key: ALLOWED_ORIGINS
+        value: https://lustrous-tartufo-9102a1.netlify.app,http://localhost:3000,http://localhost:5173,*
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_LIFETIME
+        value: 1d
+      - key: MONGODB_URI
+        sync: false # Add this manually in the dashboard
+    healthCheckPath: /health
+    autoDeploy: true
+  - type: web
     name: quizlet-flashcard-generator
     runtime: node
     plan: free # Using the free tier

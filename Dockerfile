@@ -4,25 +4,22 @@ FROM node:16-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files for server
+COPY server/package*.json ./
 
 # Install production dependencies
 RUN npm ci --only=production
 
-# Copy application files
-COPY src/ ./src/
-COPY public/ ./public/
-
-# Copy .env.example as reference
-COPY .env.example ./
+# Copy server application files
+COPY server/src/ ./src/
 
 # Set environment variables
 ENV NODE_ENV=production
-ENV PORT=5000
+ENV PORT=5001
+ENV API_PREFIX=/api/v1
 
 # Expose the application port
-EXPOSE 5000
+EXPOSE 5001
 
 # Start the application
 CMD ["node", "src/index.js"] 
