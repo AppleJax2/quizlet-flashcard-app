@@ -3,6 +3,7 @@ services:
   - type: web
     name: quizlet-flashcard-api
     env: node
+    runtime: node:18
     region: oregon
     plan: free
     buildCommand: npm install
@@ -11,7 +12,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 5001
+        value: 5000
       - key: API_PREFIX
         value: /api/v1
       - key: ALLOWED_ORIGINS
@@ -21,7 +22,7 @@ services:
       - key: JWT_LIFETIME
         value: 1d
       - key: MONGODB_URI
-        sync: false # Add this manually in the dashboard
+        value: mongodb://localhost:27017/quizlet-flashcard-generator
       - key: RATE_LIMIT_WINDOW_MS
         value: 900000
       - key: RATE_LIMIT_MAX
@@ -30,27 +31,28 @@ services:
         value: 50
       - key: LOG_LEVEL
         value: info
+      - key: USE_MEMORY_DB
+        value: "false"
     healthCheckPath: /health
     autoDeploy: true
+
+  # Frontend Service
   - type: web
     name: quizlet-flashcard-generator
-    runtime: node
-    plan: free # Using the free tier
-    buildCommand: node ./build.js
-    startCommand: node server.js
+    runtime: node:18
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
     autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        fromService:
-          type: web
-          name: quizlet-flashcard-generator
-          envVarKey: PORT
+        value: 3000
       - key: MONGODB_URI
-        sync: false # This will be set manually in the Render dashboard
+        value: mongodb://localhost:27017/quizlet-flashcard-generator
       - key: JWT_SECRET
-        generateValue: true # Automatically generate a secure random value
+        generateValue: true
       - key: JWT_LIFETIME
         value: 1d
       - key: API_PREFIX
@@ -62,4 +64,6 @@ services:
       - key: MAX_FILE_SIZE_MB
         value: 50
       - key: LOG_LEVEL
-        value: info 
+        value: info
+      - key: USE_MEMORY_DB
+        value: "false" 

@@ -1,200 +1,120 @@
-import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { ApiConfig, ApiError, ApiResponse, QueryParams } from '@/types';
+import { ApiResponse } from '@/types';
 
-// Default API configuration
-const defaultConfig: ApiConfig = {
-  baseURL: import.meta.env.VITE_API_URL || '/api/v1',
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-};
+// Define Vite's import.meta.env type
+interface ImportMetaEnv {
+  VITE_API_URL: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
+
+interface RequestOptions extends RequestInit {
+  params?: Record<string, any>;
+}
 
 class ApiService {
-  private instance: AxiosInstance;
-  private abortControllers: Map<string, AbortController> = new Map();
+  private async request<T>(
+    endpoint: string,
+    options: RequestOptions = {}
+  ): Promise<T> {
+    const { params, ...init } = options;
 
-  constructor(config: ApiConfig = defaultConfig) {
-    // Create Axios instance
-    this.instance = axios.create(config);
-
-    // Request interceptor
-    this.instance.interceptors.request.use(
-      (config) => {
-        // Get token from local storage
-        const token = localStorage.getItem('token');
-        
-        // If token exists, add it to the headers
-        if (token && config.headers) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        
-        return config;
-      },
-      (error) => Promise.reject(this.handleError(error))
-    );
-
-    // Response interceptor
-    this.instance.interceptors.response.use(
-      (response: AxiosResponse) => response.data,
-      (error) => Promise.reject(this.handleError(error))
-    );
-  }
-
-  // Handle API errors
-  private handleError(error: AxiosError): ApiError {
-    if (error.response) {
-      // The request was made and the server responded with an error status
-      const data = error.response.data as any;
-      return {
-        code: data.error?.code || 'API_ERROR',
-        message: data.message || 'An error occurred',
-        status: error.response.status,
-      };
-    } else if (error.request) {
-      // The request was made but no response was received
-      return {
-        code: 'NETWORK_ERROR',
-        message: 'No response received from server',
-        status: 0,
-      };
-    } else {
-      // Something happened in setting up the request
-      return {
-        code: 'REQUEST_ERROR',
-        message: error.message || 'Error setting up request',
-        status: 0,
-      };
-    }
-  }
-
-  // Cancel ongoing requests with the same key
-  private createAbortController(key?: string): AbortController {
-    // If no key provided, just return a new controller
-    if (!key) return new AbortController();
-
-    // If a key is provided, cancel any existing request with this key
-    if (this.abortControllers.has(key)) {
-      this.abortControllers.get(key)!.abort();
-    }
-
-    // Create a new controller
-    const controller = new AbortController();
-    this.abortControllers.set(key, controller);
-    return controller;
-  }
-
-  // Format URL with query parameters
-  private formatUrl(url: string, params?: QueryParams): string {
-    if (!params) return url;
-
-    const queryString = Object.entries(params)
-      .filter(([_, value]) => value !== undefined)
-      .map(([key, value]) => {
+    // Build URL with query parameters
+    const url = new URL(endpoint, API_BASE_URL);
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
         if (Array.isArray(value)) {
-          return value.map(v => `${encodeURIComponent(key)}=${encodeURIComponent(v)}`).join('&');
-        }
-        return `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`;
-      })
-      .join('&');
-
-    return queryString ? `${url}?${queryString}` : url;
-  }
-
-  // GET request
-  async get<T>(url: string, params?: QueryParams, options?: {
-    abortKey?: string;
-    config?: AxiosRequestConfig;
-  }): Promise<ApiResponse<T>> {
-    const controller = this.createAbortController(options?.abortKey);
-    const formattedUrl = this.formatUrl(url, params);
-    
-    return this.instance.get<any, ApiResponse<T>>(formattedUrl, {
-      ...options?.config,
-      signal: controller.signal,
-    });
-  }
-
-  // POST request
-  async post<T>(url: string, data?: any, options?: {
-    abortKey?: string;
-    config?: AxiosRequestConfig;
-  }): Promise<ApiResponse<T>> {
-    const controller = this.createAbortController(options?.abortKey);
-    
-    return this.instance.post<any, ApiResponse<T>>(url, data, {
-      ...options?.config,
-      signal: controller.signal,
-    });
-  }
-
-  // PUT request
-  async put<T>(url: string, data?: any, options?: {
-    abortKey?: string;
-    config?: AxiosRequestConfig;
-  }): Promise<ApiResponse<T>> {
-    const controller = this.createAbortController(options?.abortKey);
-    
-    return this.instance.put<any, ApiResponse<T>>(url, data, {
-      ...options?.config,
-      signal: controller.signal,
-    });
-  }
-
-  // DELETE request
-  async delete<T>(url: string, options?: {
-    abortKey?: string;
-    config?: AxiosRequestConfig;
-  }): Promise<ApiResponse<T>> {
-    const controller = this.createAbortController(options?.abortKey);
-    
-    return this.instance.delete<any, ApiResponse<T>>(url, {
-      ...options?.config,
-      signal: controller.signal,
-    });
-  }
-
-  // Upload file
-  async uploadFile<T>(url: string, file: File, additionalData?: Record<string, any>, options?: {
-    abortKey?: string;
-    config?: AxiosRequestConfig;
-    onProgress?: (progress: number) => void;
-  }): Promise<ApiResponse<T>> {
-    const controller = this.createAbortController(options?.abortKey);
-    const formData = new FormData();
-    
-    // Append the file
-    formData.append('file', file);
-    
-    // Append additional data if provided
-    if (additionalData) {
-      Object.entries(additionalData).forEach(([key, value]) => {
-        if (value !== undefined) {
-          formData.append(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
+          value.forEach(v => url.searchParams.append(key, v));
+        } else if (value !== undefined && value !== null) {
+          url.searchParams.append(key, value.toString());
         }
       });
     }
-    
-    // Configure the request with upload progress tracking
-    const uploadConfig: AxiosRequestConfig = {
-      ...options?.config,
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      onUploadProgress: (progressEvent) => {
-        if (options?.onProgress && progressEvent.total) {
-          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          options.onProgress(progress);
+
+    // Get token from localStorage
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+    // Prepare headers
+    const headers = new Headers(init.headers);
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+    if (!headers.has('Content-Type') && init.body) {
+      headers.set('Content-Type', 'application/json');
+    }
+
+    try {
+      const response = await fetch(url.toString(), {
+        ...init,
+        headers,
+      });
+
+      // Handle unauthorized access
+      if (response.status === 401) {
+        // Clear token and redirect to login
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+          window.location.href = '/login';
         }
-      },
-    };
-    
-    return this.instance.post<any, ApiResponse<T>>(url, formData, uploadConfig);
+        throw new Error('Unauthorized');
+      }
+
+      // Handle non-2xx responses
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'An error occurred');
+      }
+
+      // Return null for 204 No Content
+      if (response.status === 204) {
+        return null as T;
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An error occurred');
+    }
+  }
+
+  async get<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: 'GET' });
+  }
+
+  async post<T>(endpoint: string, data?: any, options: RequestOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'POST',
+      body: data ? JSON.stringify(data) : null,
+    });
+  }
+
+  async put<T>(endpoint: string, data?: any, options: RequestOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : null,
+    });
+  }
+
+  async patch<T>(endpoint: string, data?: any, options: RequestOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : null,
+    });
+  }
+
+  async delete<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }
 }
 
-// Create a singleton instance
+// Export as default
 const apiService = new ApiService();
-
 export default apiService; 

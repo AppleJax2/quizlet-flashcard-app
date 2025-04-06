@@ -51,4 +51,5 @@ export interface AuthContextType extends AuthState {
   resetPassword: (data: ResetPasswordData) => Promise<void>;
   updateProfile: (data: UpdateProfileData) => Promise<void>;
   clearError: () => void;
+  refreshUser: () => Promise<boolean>;
 } 

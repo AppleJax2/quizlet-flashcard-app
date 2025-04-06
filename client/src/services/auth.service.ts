@@ -4,7 +4,8 @@ import {
   RegisterCredentials, 
   ResetPasswordData, 
   UpdateProfileData, 
-  User 
+  User,
+  ApiResponse
 } from '@/types';
 import apiService from './api';
 
@@ -14,8 +15,8 @@ class AuthService {
 
   // Login with email and password
   async login(credentials: LoginCredentials) {
-    const response = await apiService.post<{ user: User; token: string }>('/auth/login', credentials);
-    if (response.success && response.data) {
+    const response = await apiService.post<ApiResponse<{ user: User; token: string }>>('/auth/login', credentials);
+    if (response.status === 200 && response.data) {
       this.setToken(response.data.token);
       this.setUser(response.data.user);
     }
@@ -24,8 +25,8 @@ class AuthService {
 
   // Register a new user
   async register(credentials: RegisterCredentials) {
-    const response = await apiService.post<{ user: User; token: string }>('/auth/register', credentials);
-    if (response.success && response.data) {
+    const response = await apiService.post<ApiResponse<{ user: User; token: string }>>('/auth/register', credentials);
+    if (response.status === 201 && response.data) {
       this.setToken(response.data.token);
       this.setUser(response.data.user);
     }
@@ -34,18 +35,18 @@ class AuthService {
 
   // Forgot password
   async forgotPassword(data: ForgotPasswordData) {
-    return apiService.post<{ message: string }>('/auth/forgot-password', data);
+    return apiService.post<ApiResponse<{ message: string }>>('/auth/forgot-password', data);
   }
 
   // Reset password
   async resetPassword(data: ResetPasswordData) {
-    return apiService.post<{ message: string }>('/auth/reset-password', data);
+    return apiService.post<ApiResponse<{ message: string }>>('/auth/reset-password', data);
   }
 
   // Update user profile
   async updateProfile(data: UpdateProfileData) {
-    const response = await apiService.put<{ user: User; token: string }>('/users/profile', data);
-    if (response.success && response.data) {
+    const response = await apiService.put<ApiResponse<{ user: User; token: string }>>('/users/profile', data);
+    if (response.status === 200 && response.data) {
       this.setToken(response.data.token);
       this.setUser(response.data.user);
     }
@@ -54,7 +55,7 @@ class AuthService {
 
   // Get current user info
   async getCurrentUser() {
-    return apiService.get<User>('/auth/me');
+    return apiService.get<ApiResponse<User>>('/auth/me');
   }
 
   // Store token in localStorage

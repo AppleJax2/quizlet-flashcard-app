@@ -6,6 +6,7 @@ import {
   FlashcardSetSummary,
   FlashcardStatistics,
   UpdateFlashcardSetRequest,
+  Flashcard,
 } from '@/types';
 import apiService from './api';
 
@@ -59,6 +60,21 @@ class FlashcardService {
   // Delete a flashcard set
   async deleteFlashcardSet(id: string) {
     return apiService.delete<{ message: string }>(`${this.endpoint}/${id}`);
+  }
+
+  // Add a new flashcard to a set
+  async addFlashcard(setId: string, flashcard: Flashcard) {
+    return apiService.post<Flashcard>(`${this.endpoint}/${setId}/flashcards`, flashcard);
+  }
+
+  // Update an existing flashcard in a set
+  async updateFlashcard(setId: string, flashcardId: string, flashcard: Flashcard) {
+    return apiService.put<Flashcard>(`${this.endpoint}/${setId}/flashcards/${flashcardId}`, flashcard);
+  }
+
+  // Delete a flashcard from a set
+  async deleteFlashcard(setId: string, flashcardId: string) {
+    return apiService.delete<{ message: string }>(`${this.endpoint}/${setId}/flashcards/${flashcardId}`);
   }
 }
 

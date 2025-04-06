@@ -31,6 +31,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>(initialState);
   const navigate = useNavigate();
 
+  // Refresh current user data
+  const refreshUser = useCallback(async () => {
+    try {
+      const token = authService.getToken();
+      
+      if (!token) {
+        return false;
+      }
+      
+      const response = await authService.getCurrentUser();
+      
+      if (response.success && response.data) {
+        // Update auth state with the user data
+        setState((prev) => ({
+          ...prev,
+          user: response.data as User,
+          isLoading: false,
+          error: null,
+        }));
+        
+        // Update stored user data
+        authService.setUser(response.data as User);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+      return false;
+    }
+  }, []);
+
   // Check if user is already logged in on mount
   useEffect(() => {
     const initializeAuth = async () => {
@@ -270,8 +302,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, error: null }));
   }, []);
 
-  // Context value
-  const value = useMemo(() => ({
+  // Context value with state and handlers
+  const contextValue = useMemo(() => ({
     ...state,
     login: handleLogin,
     register: handleRegister,
@@ -280,6 +312,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetPassword: handleResetPassword,
     updateProfile: handleUpdateProfile,
     clearError: handleClearError,
+    refreshUser
   }), [
     state,
     handleLogin,
@@ -289,10 +322,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     handleResetPassword,
     handleUpdateProfile,
     handleClearError,
+    refreshUser
   ]);
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

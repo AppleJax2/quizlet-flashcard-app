@@ -1,131 +1,67 @@
-import React, { InputHTMLAttributes, forwardRef, useState } from 'react';
-import { cn } from '@/utils/cn';
+import React from 'react';
+import { cn } from '@/lib/utils';
 
-export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+type BaseInputProps = {
   label?: string;
   error?: string;
-  leftIcon?: React.ReactElement;
-  rightIcon?: React.ReactElement;
+  multiline?: boolean;
+  rows?: number;
+  leftIcon?: React.ReactNode;
   fullWidth?: boolean;
-  helperText?: string;
-  showSuccessState?: boolean;
-  customValidation?: (value: string) => boolean;
-}
+};
 
-const Input = forwardRef<HTMLInputElement, InputProps>(
-  (
-    {
-      className,
-      label,
-      error,
-      leftIcon,
-      rightIcon,
-      fullWidth = false,
-      helperText,
-      id,
-      showSuccessState = false,
-      customValidation,
-      onFocus,
-      onBlur,
-      ...props
-    },
-    ref
-  ) => {
-    const inputId = id || `input-${Math.random().toString(36).substring(2, 9)}`;
-    const [focused, setFocused] = useState(false);
-    const [validated, setValidated] = useState(false);
-    
-    const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-      setFocused(true);
-      if (onFocus) onFocus(e);
-    };
-    
-    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-      setFocused(false);
-      // Validate when the user leaves the field
-      if (customValidation && e.target.value) {
-        setValidated(customValidation(e.target.value));
-      }
-      if (onBlur) onBlur(e);
-    };
-    
-    // Determine if we should show the success state
-    const showSuccess = showSuccessState && props.value && !error && 
-      (!customValidation || validated);
+type InputElementProps = BaseInputProps & Omit<React.InputHTMLAttributes<HTMLInputElement>, keyof BaseInputProps>;
+type TextAreaElementProps = BaseInputProps & Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, keyof BaseInputProps>;
+
+type InputProps = InputElementProps | (TextAreaElementProps & { multiline: true });
+
+export const Input = React.forwardRef<HTMLInputElement | HTMLTextAreaElement, InputProps>(
+  ({ className, label, error, multiline, rows = 3, leftIcon, fullWidth, ...props }, ref) => {
+    const inputClasses = cn(
+      'flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background',
+      'file:border-0 file:bg-transparent file:text-sm file:font-medium',
+      'placeholder:text-muted-foreground',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+      'disabled:cursor-not-allowed disabled:opacity-50',
+      error && 'border-red-500 focus-visible:ring-red-500',
+      className
+    );
+
+    const inputComponent = (
+      <div className={`relative ${fullWidth ? 'w-full' : ''}`}>
+        {leftIcon && (
+          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            {leftIcon}
+          </div>
+        )}
+        {multiline ? (
+          <textarea
+            ref={ref as React.Ref<HTMLTextAreaElement>}
+            className={cn(inputClasses, leftIcon && 'pl-10')}
+            rows={rows}
+            {...(props as React.TextareaHTMLAttributes<HTMLTextAreaElement>)}
+          />
+        ) : (
+          <input
+            ref={ref as React.Ref<HTMLInputElement>}
+            type="text"
+            className={cn(inputClasses, leftIcon && 'pl-10')}
+            {...(props as React.InputHTMLAttributes<HTMLInputElement>)}
+          />
+        )}
+      </div>
+    );
 
     return (
-      <div className={cn('mb-4', fullWidth && 'w-full')}>
+      <div className="space-y-2">
         {label && (
-          <label
-            htmlFor={inputId}
-            className="mb-1.5 block text-sm font-medium text-neutral-800"
-          >
+          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
             {label}
           </label>
         )}
-        <div className="relative">
-          {leftIcon && (
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-500">
-              {leftIcon}
-            </div>
-          )}
-          <input
-            ref={ref}
-            id={inputId}
-            className={cn(
-              'w-full rounded-lg border bg-white px-3 py-2 text-sm transition-colors placeholder:text-neutral-400 focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:opacity-50',
-              error
-                ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
-                : focused
-                  ? 'border-primary-500 focus:border-primary-500 focus:ring-primary-500'
-                  : showSuccess
-                    ? 'border-green-500'
-                    : 'border-neutral-300 focus:border-primary-500 focus:ring-primary-500',
-              leftIcon && 'pl-10',
-              rightIcon && 'pr-10',
-              className
-            )}
-            aria-invalid={error ? 'true' : 'false'}
-            aria-describedby={
-              error
-                ? `${inputId}-error`
-                : helperText
-                ? `${inputId}-helper`
-                : undefined
-            }
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            {...props}
-          />
-          {rightIcon && (
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-500">
-              {rightIcon}
-            </div>
-          )}
-          {showSuccess && !rightIcon && (
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-green-500">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            </div>
-          )}
-        </div>
+        {inputComponent}
         {error && (
-          <p
-            className="mt-1 text-xs text-red-500"
-            id={`${inputId}-error`}
-            role="alert"
-          >
-            {error}
-          </p>
-        )}
-        {helperText && !error && (
-          <p
-            className="mt-1 text-xs text-neutral-500"
-            id={`${inputId}-helper`}
-          >
-            {helperText}
-          </p>
+          <p className="text-sm font-medium text-red-500">{error}</p>
         )}
       </div>
     );

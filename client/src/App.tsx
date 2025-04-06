@@ -10,6 +10,9 @@ import LoadingScreen from '@/components/ui/LoadingScreen';
 
 // Public pages
 import HomePage from '@/pages/HomePage';
+import FeaturesPage from '@/pages/FeaturesPage';
+import AboutPage from '@/pages/AboutPage';
+import PricingPage from '@/pages/PricingPage';
 // Lazy loaded auth pages
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
 const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage'));
@@ -23,6 +26,7 @@ const FlashcardSetListPage = lazy(() => import('@/pages/app/flashcards/Flashcard
 const TextProcessorPage = lazy(() => import('@/pages/app/processor/TextProcessorPage'));
 const UrlProcessorPage = lazy(() => import('@/pages/app/processor/UrlProcessorPage'));
 const DocumentProcessorPage = lazy(() => import('@/pages/app/processor/DocumentProcessorPage'));
+const ProfilePage = lazy(() => import('@/pages/app/ProfilePage'));
 
 function App() {
   return (
@@ -66,6 +70,9 @@ function App() {
             {/* Public routes with PublicLayout */}
             <Route element={<PublicLayout />}>
               <Route path="/" element={<HomePage />} />
+              <Route path="/features" element={<FeaturesPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -85,6 +92,7 @@ function App() {
               <Route path="/processor/text" element={<TextProcessorPage />} />
               <Route path="/processor/url" element={<UrlProcessorPage />} />
               <Route path="/processor/document" element={<DocumentProcessorPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Route>
 
             {/* Redirects */}

@@ -1,137 +1,174 @@
-# Quizlet Flashcard Generator Backend
+# Quizlet Flashcard App
 
-A powerful backend system for generating, managing, and sharing flashcards.
+A modern flashcard application for enhanced learning.
 
 ## Features
 
-- 🔐 **Secure Authentication**: User registration, login, password reset
-- 📚 **Flashcard Management**: Create, read, update, delete flashcard sets
-- 🔄 **Content Processing**: Process text, URLs, and various file formats
-- ✨ **Automatic Generation**: AI-powered flashcard generation from content
-- 🔍 **Search & Discovery**: Find and filter flashcard sets
-- 📊 **Statistics**: Track and analyze flashcard sets
+- User authentication (login, registration, password recovery)
+- Flashcard creation and management
+- Study sessions with spaced repetition
+- Multiple flashcard generation methods (text, document, URL)
+- User profile management
+- Responsive design for all devices
 
-## Technology Stack
+## Tech Stack
 
-- **Node.js**: JavaScript runtime environment
-- **Express**: Web application framework
-- **MongoDB**: NoSQL database
-- **Mongoose**: Object Data Modeling (ODM) library
-- **JWT**: JSON Web Tokens for authentication
-- **Joi**: Schema validation
-- **Multer**: File upload handling
-- **Winston**: Logging
-- **Express Rate Limit**: Rate limiting
-- **Helmet**: Security headers
+### Frontend
+
+- React with TypeScript
+- Tailwind CSS for styling
+- React Router for navigation
+- React Hook Form for form management
+- Axios for API requests
+- Vite for build tooling
+
+### Backend
+
+- Node.js with Express
+- MongoDB for database
+- JWT for authentication
+- REST API architecture
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js (v16+)
-- MongoDB
+- Node.js (v14 or higher)
 - npm or yarn
+- MongoDB (local or Atlas)
 
 ### Installation
 
+#### Backend
+
 1. Clone the repository
-```bash
-git clone https://github.com/your-username/quizlet-flashcard-generator.git
-cd quizlet-flashcard-generator
-```
+   ```bash
+   git clone https://github.com/yourusername/quizlet-flashcard-app.git
+   cd quizlet-flashcard-app
+   ```
 
 2. Install dependencies
-```bash
-npm install
-```
+   ```bash
+   npm install
+   ```
 
-3. Create environment file
-```bash
-cp .env.example .env
-```
+3. Set up environment variables
+   ```bash
+   cp .env.example .env
+   ```
+   Edit the `.env` file with your configuration:
+   ```
+   NODE_ENV=development
+   PORT=5001
+   API_PREFIX=/api/v1
+   CLIENT_URL=http://localhost:3000
+   ALLOWED_ORIGINS=http://localhost:3000,https://your-netlify-app.netlify.app
+   MONGODB_URI=mongodb://localhost:27017/quizlet
+   JWT_SECRET=your_jwt_secret_key
+   JWT_LIFETIME=1d
+   ```
 
-4. Update the `.env` file with your configuration
-   - Set a proper JWT_SECRET for security
-   - Configure your MongoDB connection string
+4. Start the development server
+   ```bash
+   npm run dev
+   ```
 
-5. Start the development server
-```bash
-npm run dev
-```
+#### Frontend
 
-## API Documentation
+1. Navigate to the client directory
+   ```bash
+   cd client
+   ```
 
-### Authentication
+2. Install dependencies
+   ```bash
+   npm install
+   ```
 
-- `POST /api/v1/auth/register` - Register a new user
-- `POST /api/v1/auth/login` - Login a user
-- `POST /api/v1/auth/forgot-password` - Request password reset
-- `POST /api/v1/auth/reset-password` - Reset password with token
-- `GET /api/v1/auth/me` - Get current user profile
+3. Set up environment variables
+   ```bash
+   cp .env.example .env.development
+   ```
+   Edit the `.env.development` file:
+   ```
+   VITE_API_URL=http://localhost:5001/api/v1
+   VITE_NODE_ENV=development
+   ```
 
-### User Management
+4. Start the development server
+   ```bash
+   npm run dev
+   ```
 
-- `PUT /api/v1/users/profile` - Update user profile
-- `DELETE /api/v1/users/profile` - Delete user account
+## Deployment
 
-### Flashcard Sets
+### Backend Deployment
 
-- `POST /api/v1/flashcard-sets` - Create a new flashcard set
-- `GET /api/v1/flashcard-sets` - Get all flashcard sets for the user
-- `GET /api/v1/flashcard-sets/public` - Get public flashcard sets
-- `GET /api/v1/flashcard-sets/search` - Search flashcard sets
-- `GET /api/v1/flashcard-sets/:id` - Get a single flashcard set
-- `GET /api/v1/flashcard-sets/:id/stats` - Get flashcard set statistics
-- `PUT /api/v1/flashcard-sets/:id` - Update a flashcard set
-- `POST /api/v1/flashcard-sets/:id/duplicate` - Duplicate a flashcard set
-- `DELETE /api/v1/flashcard-sets/:id` - Delete a flashcard set
+1. Create a production `.env.production` file with appropriate settings:
+   ```
+   NODE_ENV=production
+   PORT=5001
+   API_PREFIX=/api/v1
+   CLIENT_URL=https://your-netlify-app.netlify.app
+   ALLOWED_ORIGINS=https://your-netlify-app.netlify.app
+   MONGODB_URI=mongodb+srv://your-mongodb-connection-string
+   JWT_SECRET=your_secure_jwt_secret
+   JWT_LIFETIME=1d
+   ```
 
-### Content Processing
+2. Deploy to your hosting platform (Render, Heroku, AWS, etc.)
+   - For Render.com: Connect your GitHub repository and set the build command to `npm install && npm run build`
+   - Start command: `npm start`
+   - Add all environment variables from your `.env.production` file
 
-- `POST /api/v1/processor/text` - Process text content
-- `POST /api/v1/processor/url` - Process URL content
-- `POST /api/v1/processor/file` - Process uploaded file
-- `POST /api/v1/processor/generate` - Generate flashcards from content
-- `GET /api/v1/processor/task/:taskId` - Get task status
-- `DELETE /api/v1/processor/task/:taskId` - Cancel task
+### Frontend Deployment
 
-## Development
+1. Set up Netlify CLI (if not already installed)
+   ```bash
+   npm install -g netlify-cli
+   ```
 
-### Project Structure
+2. Create a production environment file
+   ```bash
+   cd client
+   cp .env.development .env.production
+   ```
+   Edit `.env.production`:
+   ```
+   VITE_API_URL=https://your-backend-api.com/api/v1
+   VITE_NODE_ENV=production
+   ```
 
-```
-src/
-├── api/
-│   ├── controllers/    # Request handlers
-│   ├── middleware/     # Express middleware
-│   ├── models/         # Mongoose models
-│   ├── routes/         # Express routes
-│   ├── services/       # Business logic
-│   └── utils/          # Utility functions
-├── config/             # Configuration
-├── loaders/            # Application loaders
-└── types/              # Type definitions
-```
+3. Update the `netlify.toml` file with your backend URL:
+   ```toml
+   [context.production.environment]
+     VITE_NODE_ENV = "production"
+     VITE_API_URL = "https://your-backend-api.com/api/v1"
+   ```
 
-### Running Tests
+4. Deploy to Netlify
+   ```bash
+   npm run deploy:prod
+   ```
 
-```bash
-npm test
-```
+## Troubleshooting
 
-### Linting
+### CORS Issues
 
-```bash
-npm run lint
-```
+If you're experiencing CORS errors:
+
+1. Ensure your backend's `ALLOWED_ORIGINS` includes your frontend domain
+2. Check that the Content-Security-Policy in `netlify.toml` is correctly configured
+
+### Content Security Policy
+
+If you're seeing CSP errors with Google Fonts or other resources:
+
+1. Update the Content-Security-Policy in `netlify.toml`:
+   ```toml
+   Content-Security-Policy = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'; connect-src 'self' https://your-backend-api.com;"
+   ```
 
 ## License
 
-This project is licensed under the ISC License.
-
-## Acknowledgements
-
-- [Express.js](https://expressjs.com/)
-- [MongoDB](https://www.mongodb.com/)
-- [Mongoose](https://mongoosejs.com/)
-- [JWT](https://jwt.io/) 
+This project is licensed under the MIT License - see the LICENSE file for details. 

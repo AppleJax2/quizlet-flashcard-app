@@ -4,7 +4,11 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 
-export default function PrivateRoute() {
+interface PrivateRouteProps {
+  children: React.ReactNode;
+}
+
+export default function PrivateRoute({ children }: PrivateRouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
@@ -19,6 +23,6 @@ export default function PrivateRoute() {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Render the protected route
-  return <Outlet />;
+  // Render the protected route or children
+  return children || <Outlet />;
 } 

@@ -1,25 +1,32 @@
-# Use Node.js 16 as base image
-FROM node:16-alpine
+# Use Node.js 18 as base image
+FROM node:18-alpine
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files for server
+# Copy package files
 COPY package*.json ./
 
-# Install production dependencies
-RUN npm ci --only=production
+# Install all dependencies including development dependencies
+RUN npm install
 
-# Copy server application files
-COPY src/ ./src/
+# Copy application files
+COPY . .
 
 # Set environment variables
-ENV NODE_ENV=production
-ENV PORT=5001
-ENV API_PREFIX=/api/v1
+ENV NODE_ENV=production \
+    PORT=5000 \
+    MONGODB_URI=mongodb://localhost:27017/quizlet-flashcard-generator
 
 # Expose the application port
-EXPOSE 5001
+EXPOSE 5000
+
+# Create volume for logs
+VOLUME ["/app/logs"]
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:5000/health || exit 1
 
 # Start the application
-CMD ["node", "src/index.js"] 
+CMD ["npm", "start"] 

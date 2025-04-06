@@ -74,7 +74,7 @@ export interface UpdateFlashcardSetRequest {
   complexity?: 'simple' | 'medium' | 'advanced';
 }
 
-export interface FlashcardSetQueryParams {
+export interface FlashcardSetQueryParams extends Record<string, any> {
   page?: number;
   limit?: number;
   sort?: string;

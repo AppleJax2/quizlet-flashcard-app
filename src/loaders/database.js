@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
 const logger = require('../config/logger');
 const env = require('../config/env');
 
@@ -21,11 +20,13 @@ const connectDB = async () => {
       connectTimeoutMS: 30000,
     };
     
-    let uri = env.MONGODB_URI;
+    let uri = env.MONGODB_URI || 'mongodb://localhost:27017/quizlet-flashcard-generator';
 
-    // For development, use in-memory MongoDB server
-    if (env.isDevelopment()) {
+    // For development, use in-memory MongoDB server if explicitly requested
+    if (env.NODE_ENV === 'development' && env.USE_MEMORY_DB === 'true') {
       logger.info('Using MongoDB Memory Server for development');
+      // Only require mongodb-memory-server in development
+      const { MongoMemoryServer } = require('mongodb-memory-server');
       mongoServer = await MongoMemoryServer.create();
       uri = mongoServer.getUri();
     }
@@ -44,8 +45,9 @@ const connectDB = async () => {
       logger.error(`Mongoose connection error: ${err}`);
       
       // If we're in production, attempt to reconnect
-      if (env.isProduction()) {
+      if (env.NODE_ENV === 'production') {
         logger.info('Attempting to reconnect to MongoDB...');
+        // Implement reconnection logic here if needed
       }
     });
     
@@ -54,7 +56,7 @@ const connectDB = async () => {
     });
     
     // Monitor slow queries in development
-    if (env.isDevelopment()) {
+    if (env.NODE_ENV === 'development') {
       mongoose.set('debug', (collectionName, method, query, doc) => {
         logger.debug(`Mongoose: ${collectionName}.${method}(${JSON.stringify(query)}) - ${JSON.stringify(doc)}`);
       });
@@ -87,8 +89,10 @@ const connectDB = async () => {
       logger.error('MongoDB server selection error. Cannot connect to any servers in the replica set.');
     }
     
-    // Exit with failure
-    process.exit(1);
+    // Exit with failure in production, but allow development to continue
+    if (env.NODE_ENV === 'production') {
+      process.exit(1);
+    }
   }
 };
 
