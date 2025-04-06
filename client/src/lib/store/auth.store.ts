@@ -95,36 +95,46 @@ export const useAuthStore = create<AuthState>()(
       },
 
       loadUser: async () => {
+        // Ensure loading is true at the start
+        set({ isLoading: true, error: null });
+        let isAuthenticatedUpdate = false;
+        let userUpdate: User | null = null;
+        let errorUpdate: string | null = null;
+
         try {
-          set({ isLoading: true, error: null });
-          
-          // Use the service method to check authentication state
           const token = authServiceInstance.getToken();
           if (!token) {
-            set({ isLoading: false, isAuthenticated: false, user: null });
-            return;
+            // No token, definitely not authenticated
+            throw new Error('No authentication token found.');
           }
           
           // Attempt to fetch the current user profile
           const response = await authServiceInstance.getCurrentUser();
           
           if (response.status !== 200 || !response.data) {
-            authServiceInstance.clearAuth(); // Clear invalid token if fetch fails
-            throw new Error(response.message || response.error || 'Failed to load user');
+            // API call failed (e.g., token expired, server error)
+            throw new Error(response.message || response.error || 'Failed to load user profile.');
           }
           
-          set({
-            user: response.data,
-            isAuthenticated: true,
-            isLoading: false,
-          });
+          // Success!
+          isAuthenticatedUpdate = true;
+          userUpdate = response.data;
+
         } catch (error) {
-          authServiceInstance.clearAuth(); // Ensure clearAuth if any error occurs during load
+          // Any error during the process means not authenticated
+          authServiceInstance.clearAuth(); // Ensure token/user removed from storage
+          isAuthenticatedUpdate = false;
+          userUpdate = null;
+          errorUpdate = error instanceof Error ? error.message : 'Failed to authenticate session.';
+          console.error('loadUser failed:', errorUpdate); // Log the error
+
+        } finally {
+          // Always update the state at the end, ensuring isLoading is false
           set({
-            user: null,
-            isAuthenticated: false,
+            user: userUpdate,
+            isAuthenticated: isAuthenticatedUpdate,
             isLoading: false,
-            error: error instanceof Error ? error.message : 'An unexpected error occurred',
+            error: errorUpdate,
           });
         }
       },

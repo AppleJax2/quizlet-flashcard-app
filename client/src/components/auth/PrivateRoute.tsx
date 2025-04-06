@@ -13,22 +13,29 @@ export default function PrivateRoute({ children }: PrivateRouteProps) {
   const location = useLocation();
 
   useEffect(() => {
-    if (user === null && !isLoading) {
+    // Attempt to load user details if we think we are authenticated but don't have user details yet.
+    // This handles the case after page refresh where `isAuthenticated` might be true from persisted state,
+    // but `user` details need to be fetched.
+    if (isAuthenticated && user === null && !isLoading) {
       loadUser();
     }
-  }, [loadUser, user, isLoading]);
+    // If we are not authenticated and there's no user, ensure state is clean (e.g., clear potential stale user)
+    // Note: loadUser already handles clearing state on failure.
+  }, [isAuthenticated, user, isLoading, loadUser]);
 
-  if (isLoading || user === null) {
-    const token = localStorage.getItem('token');
-    if (!token && !isLoading) {
-      return <Navigate to="/login" state={{ from: location }} replace />;
-    }
+  // If still loading user data explicitly, show loading screen.
+  if (isLoading) {
     return <LoadingScreen message="Verifying your authentication..." />;
   }
 
+  // After loading attempt, if not authenticated, redirect to login.
+  // This relies on `loadUser` correctly setting `isAuthenticated` to false on failure.
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // If authenticated and not loading, render the protected route.
+  // We might still not have the user object briefly if loadUser is slow,
+  // but the route is protected by isAuthenticated.
   return children || <Outlet />;
 } 
