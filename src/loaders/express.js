@@ -40,6 +40,11 @@ const initExpress = (app) => {
         return callback(null, true);
       }
       
+      // Always allow the Netlify app
+      if (origin === 'https://lustrous-tartufo-9102a1.netlify.app') {
+        return callback(null, true);
+      }
+      
       // Check against allowed origins
       if (env.isDevelopment()) {
         // In development, allow all origins
@@ -49,6 +54,7 @@ const initExpress = (app) => {
         if (env.ALLOWED_ORIGINS.indexOf(origin) !== -1 || env.ALLOWED_ORIGINS.includes('*')) {
           return callback(null, true);
         } else {
+          logger.warn(`CORS blocked request from origin: ${origin}`);
           return callback(new Error('CORS: Not allowed by CORS'), false);
         }
       }
@@ -63,6 +69,9 @@ const initExpress = (app) => {
   };
   
   app.use(cors(corsOptions));
+  
+  // Handle preflight requests explicitly
+  app.options('*', cors(corsOptions));
   
   // Request ID middleware for request tracking
   app.use((req, res, next) => {
@@ -125,6 +134,30 @@ const initExpress = (app) => {
       version: process.env.npm_package_version || '1.0.0',
     });
   });
+  
+  // Serve static files from the React app in production
+  if (env.isProduction()) {
+    const clientBuildPath = path.join(process.cwd(), 'client', 'dist');
+    
+    // Check if client build exists
+    if (fs.existsSync(clientBuildPath)) {
+      logger.info(`Serving static files from: ${clientBuildPath}`);
+      
+      // Serve static files
+      app.use(express.static(clientBuildPath));
+      
+      // Handle React routing, return all requests to React app
+      app.get('*', (req, res) => {
+        // Skip API routes
+        if (req.url.startsWith(env.API_PREFIX)) {
+          return next();
+        }
+        res.sendFile(path.join(clientBuildPath, 'index.html'));
+      });
+    } else {
+      logger.warn(`Client build directory not found at: ${clientBuildPath}`);
+    }
+  }
   
   // 404 handler
   app.use((req, res, next) => {
