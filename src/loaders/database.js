@@ -1,98 +1,103 @@
 const mongoose = require('mongoose');
-const logger = require('../config/logger');
 const env = require('../config/env');
-
-let mongoServer;
+const logger = require('../config/logger');
 
 /**
- * Connect to MongoDB database
- * @returns {Promise<void>}
+ * Obfuscate MongoDB URI for logging (hide credentials)
+ * @param {string} uri - MongoDB URI to obfuscate
+ * @returns {string} Obfuscated URI with credentials hidden
+ */
+const obfuscateURI = (uri) => {
+  try {
+    if (!uri) return 'undefined';
+    return uri.replace(/\/\/(.*):(.*)@/, '//***:***@');
+  } catch (error) {
+    return 'Error obfuscating URI';
+  }
+};
+
+/**
+ * Connect to MongoDB
+ * @returns {Promise<typeof mongoose>} Mongoose connection
  */
 const connectDB = async () => {
   try {
-    // Connection options for newer MongoDB driver versions
-    const options = {
-      // Timeout in ms for operations
-      serverSelectionTimeoutMS: 15000,
-      // Heartbeat interval in ms
-      heartbeatFrequencyMS: 10000,
-      // Connection timeout
-      connectTimeoutMS: 30000,
+    logger.info(`Connecting to MongoDB at: ${obfuscateURI(env.MONGODB_URI)}`);
+    
+    // Increase timeouts for cloud connections
+    const connectionOptions = {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      connectTimeoutMS: 30000,  // Increase from default 10000
+      socketTimeoutMS: 45000,   // Increase from default 30000
+      serverSelectionTimeoutMS: 30000,  // Increase from default 20000
     };
     
-    let uri = env.MONGODB_URI || 'mongodb://localhost:27017/quizlet-flashcard-generator';
-
-    // For development, use in-memory MongoDB server if explicitly requested
-    if (env.NODE_ENV === 'development' && env.USE_MEMORY_DB === 'true') {
+    // Use MongoMemory server only in development
+    if (env.NODE_ENV === 'development' && !env.MONGODB_URI.includes('mongodb+srv')) {
       logger.info('Using MongoDB Memory Server for development');
-      // Only require mongodb-memory-server in development
       const { MongoMemoryServer } = require('mongodb-memory-server');
-      mongoServer = await MongoMemoryServer.create();
-      uri = mongoServer.getUri();
+      const mongod = await MongoMemoryServer.create();
+      const uri = mongod.getUri();
+      const connection = await mongoose.connect(uri, connectionOptions);
+      logger.info('MongoDB memory server connected successfully');
+      return connection;
     }
     
-    // Connect to MongoDB
-    const conn = await mongoose.connect(uri, options);
+    // Connect to the real MongoDB instance
+    const connection = await mongoose.connect(env.MONGODB_URI, connectionOptions);
+    logger.info('MongoDB connected successfully');
     
-    logger.info(`MongoDB Connected: ${conn.connection.host}`);
-    
-    // Handle connection events
+    // Listen for MongoDB connection events
     mongoose.connection.on('connected', () => {
-      logger.info('Mongoose connected to MongoDB');
-    });
-    
-    mongoose.connection.on('error', (err) => {
-      logger.error(`Mongoose connection error: ${err}`);
-      
-      // If we're in production, attempt to reconnect
-      if (env.NODE_ENV === 'production') {
-        logger.info('Attempting to reconnect to MongoDB...');
-        // Implement reconnection logic here if needed
-      }
+      logger.info('MongoDB connection established');
     });
     
     mongoose.connection.on('disconnected', () => {
-      logger.warn('Mongoose disconnected from MongoDB');
+      logger.warn('MongoDB connection disconnected');
     });
     
-    // Monitor slow queries in development
-    if (env.NODE_ENV === 'development') {
-      mongoose.set('debug', (collectionName, method, query, doc) => {
-        logger.debug(`Mongoose: ${collectionName}.${method}(${JSON.stringify(query)}) - ${JSON.stringify(doc)}`);
-      });
-    }
-    
-    // Close the connection when the Node process ends
-    process.on('SIGINT', async () => {
-      try {
-        await mongoose.connection.close();
-        if (mongoServer) {
-          await mongoServer.stop();
-        }
-        logger.info('Mongoose disconnected through app termination');
-        process.exit(0);
-      } catch (err) {
-        logger.error('Error disconnecting Mongoose:', err);
+    mongoose.connection.on('error', (err) => {
+      logger.error(`MongoDB connection error: ${err.message}`);
+      
+      // Only exit in production - in development we want to keep trying
+      if (env.NODE_ENV === 'production') {
+        logger.error('MongoDB connection failure in production environment - exiting application');
         process.exit(1);
       }
     });
     
+    // Debug for slow queries in development
+    if (env.NODE_ENV === 'development') {
+      mongoose.set('debug', (collectionName, method, query, doc) => {
+        logger.debug(`Mongoose: ${collectionName}.${method}(${JSON.stringify(query)}, ${JSON.stringify(doc)})`);
+      });
+    }
+    
+    return connection;
   } catch (error) {
     logger.error(`MongoDB connection error: ${error.message}`);
     
-    // More detailed error information for common issues
-    if (error.name === 'MongoParseError') {
-      logger.error('Invalid MongoDB connection string. Please check MONGODB_URI format.');
-    } else if (error.name === 'MongoNetworkError') {
-      logger.error('MongoDB network error. Please check if MongoDB server is running and network connectivity.');
-    } else if (error.name === 'MongoServerSelectionError') {
-      logger.error('MongoDB server selection error. Cannot connect to any servers in the replica set.');
+    // Add more specific error messages to help with debugging
+    if (error.name === 'MongoServerSelectionError') {
+      logger.error('Could not connect to any MongoDB server - check network and credentials');
     }
     
-    // Exit with failure in production, but allow development to continue
+    if (error.message.includes('authentication failed')) {
+      logger.error('MongoDB authentication failed - check username and password');
+    }
+    
+    if (error.message.includes('getaddrinfo')) {
+      logger.error('DNS resolution failed - check hostname in connection string');
+    }
+    
+    // In production, crash the application so it can be restarted
     if (env.NODE_ENV === 'production') {
+      logger.error('Fatal database connection error in production - exiting');
       process.exit(1);
     }
+    
+    throw error;
   }
 };
 
