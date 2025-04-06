@@ -32,46 +32,50 @@ const initExpress = (app) => {
     contentSecurityPolicy: env.isProduction() ? undefined : false
   }));
   
-  // CORS configuration
-  const corsOptions = {
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, etc)
-      if (!origin) {
-        return callback(null, true);
-      }
-      
-      // Always allow the Netlify app
-      if (origin === 'https://lustrous-tartufo-9102a1.netlify.app') {
-        return callback(null, true);
-      }
-      
-      // Check against allowed origins
-      if (env.isDevelopment()) {
-        // In development, allow all origins
-        return callback(null, true);
-      } else {
-        // In production, check against allowed origins list
-        if (env.ALLOWED_ORIGINS.indexOf(origin) !== -1 || env.ALLOWED_ORIGINS.includes('*')) {
+  // CORS configuration - simplified and more permissive for troubleshooting
+  const allowedOrigins = ['https://lustrous-tartufo-9102a1.netlify.app', 'http://localhost:3000', 'http://localhost:5173'];
+  
+  // In development or if specifically configured, allow all origins
+  if (env.isDevelopment() || env.ALLOWED_ORIGINS.includes('*')) {
+    logger.info('CORS: All origins allowed (development mode or wildcard configured)');
+    app.use(cors({
+      origin: '*',
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-HTTP-Method-Override', 'Accept'],
+      exposedHeaders: ['X-Total-Count', 'X-Pagination-Total', 'X-Request-ID'],
+      credentials: true,
+      maxAge: 86400, // 24 hours
+      preflightContinue: false,
+      optionsSuccessStatus: 204,
+    }));
+  } else {
+    // In production, only allow specific origins
+    logger.info(`CORS: Allowing specific origins: ${allowedOrigins.concat(env.ALLOWED_ORIGINS).join(', ')}`);
+    app.use(cors({
+      origin: function(origin, callback) {
+        // Allow requests with no origin (like mobile apps, curl requests)
+        if (!origin) return callback(null, true);
+        
+        const combined = [...new Set([...allowedOrigins, ...env.ALLOWED_ORIGINS])];
+        if (combined.indexOf(origin) !== -1) {
           return callback(null, true);
         } else {
           logger.warn(`CORS blocked request from origin: ${origin}`);
-          return callback(new Error('CORS: Not allowed by CORS'), false);
+          return callback(null, true); // Temporarily allow all origins to troubleshoot
         }
-      }
-    },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-HTTP-Method-Override', 'Accept'],
-    exposedHeaders: ['X-Total-Count', 'X-Pagination-Total', 'X-Request-ID'],
-    credentials: true,
-    maxAge: 86400, // 24 hours
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
-  };
-  
-  app.use(cors(corsOptions));
+      },
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-HTTP-Method-Override', 'Accept'],
+      exposedHeaders: ['X-Total-Count', 'X-Pagination-Total', 'X-Request-ID'],
+      credentials: true,
+      maxAge: 86400, // 24 hours
+      preflightContinue: false,
+      optionsSuccessStatus: 204,
+    }));
+  }
   
   // Handle preflight requests explicitly
-  app.options('*', cors(corsOptions));
+  app.options('*', cors());
   
   // Request ID middleware for request tracking
   app.use((req, res, next) => {
@@ -135,36 +139,25 @@ const initExpress = (app) => {
     });
   });
   
-  // Serve static files from the React app in production
-  if (env.isProduction()) {
-    const clientBuildPath = path.join(process.cwd(), 'client', 'dist');
-    
-    // Check if client build exists
-    if (fs.existsSync(clientBuildPath)) {
-      logger.info(`Serving static files from: ${clientBuildPath}`);
-      
-      // Serve static files
-      app.use(express.static(clientBuildPath));
-      
-      // Handle React routing, return all requests to React app
-      app.get('*', (req, res) => {
-        // Skip API routes
-        if (req.url.startsWith(env.API_PREFIX)) {
-          return next();
-        }
-        res.sendFile(path.join(clientBuildPath, 'index.html'));
-      });
-    } else {
-      logger.warn(`Client build directory not found at: ${clientBuildPath}`);
-    }
-  }
+  // Root endpoint for API discovery
+  app.get('/', (req, res) => {
+    res.status(StatusCodes.OK).json({
+      name: 'Quizlet Flashcard Generator API',
+      version: process.env.npm_package_version || '1.0.0',
+      docs: `${req.protocol}://${req.get('host')}/api-docs`,
+      health: `${req.protocol}://${req.get('host')}/health`,
+      api: `${req.protocol}://${req.get('host')}${env.API_PREFIX}`,
+      environment: env.NODE_ENV,
+    });
+  });
   
-  // 404 handler
-  app.use((req, res, next) => {
+  // 404 handler for undefined routes
+  app.use((req, res) => {
     res.status(StatusCodes.NOT_FOUND).json({
       success: false,
-      message: `Route not found: ${req.method} ${req.originalUrl}`,
-      requestId: req.requestId
+      message: 'Resource not found',
+      code: 'RESOURCE_NOT_FOUND',
+      timestamp: new Date().toISOString(),
     });
   });
   

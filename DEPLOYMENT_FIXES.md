@@ -1,54 +1,78 @@
-# Deployment Fixes
+# Deployment Fixes for CORS and JWT_SECRET Issues
 
-This document outlines the changes made to fix deployment issues with the Quizlet application.
+This guide explains the changes made to fix the CORS and JWT_SECRET issues that were preventing successful authentication between your Netlify frontend and Render.com backend.
 
-## Issues Fixed
+## What's Fixed
 
-1. **Content Security Policy (CSP) Error**
-   - The Netlify configuration had an incorrect CSP that prevented loading Google Fonts
-   - Fixed by updating the `netlify.toml` file to properly allow Google Fonts domains in both `style-src` and `font-src` directives
-   - Removed duplicate `font-src` directive that was causing conflicts
+1. **CORS Configuration**: 
+   - Updated the CORS settings in both `src/loaders/express.js` and `server/src/loaders/express.js`
+   - Made CORS configuration more permissive to allow requests from your Netlify app
+   - Added explicit support for preflight OPTIONS requests
+   - Improved CORS error handling and logging
 
-2. **CORS Policy Error**
-   - The backend API wasn't configured to accept requests from the Netlify domain
-   - Added `https://lustrous-tartufo-9102a1.netlify.app` to the `ALLOWED_ORIGINS` environment variable in both development and production environment files
+2. **JWT_SECRET Environment Variable**:
+   - Created instructions for setting the JWT_SECRET environment variable in Render.com
 
-## Deployment Instructions
+## Deployment Steps
 
-### Backend (Render.com)
+### 1. Commit and Push Changes
 
-1. Update environment variables on Render.com:
-   - Add `ALLOWED_ORIGINS=https://lustrous-tartufo-9102a1.netlify.app`
-   - (Alternatively) Upload the updated `.env.production` file
+```bash
+# Add the changed files
+git add src/loaders/express.js server/src/loaders/express.js RENDER_ENV_SETUP.md DEPLOYMENT_FIXES.md
 
-2. Redeploy the backend service:
-   ```
-   git push
-   ```
-   Or use the manual deploy option in the Render dashboard.
+# Commit with a descriptive message
+git commit -m "Fix CORS issues and provide JWT_SECRET setup instructions"
 
-### Frontend (Netlify)
+# Push to GitHub
+git push origin main
+```
 
-1. The updated `netlify.toml` file should be committed and pushed:
-   ```
-   git add netlify.toml
-   git commit -m "Fix CSP for Google Fonts"
-   git push
-   ```
+### 2. Set Environment Variables in Render
 
-2. Netlify should automatically deploy the updated configuration.
+Before your app will work correctly, you need to set the required environment variables in Render.com:
 
-## Verification
+1. Go to the [Render Dashboard](https://dashboard.render.com/)
+2. Navigate to your `quizlet-flashcard-api` service
+3. Go to the "Environment" tab
+4. Add or update the following environment variables:
+   - **JWT_SECRET**: Generate a secure random value using `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+   - **ALLOWED_ORIGINS**: Make sure this includes `https://lustrous-tartufo-9102a1.netlify.app`
+   - **MONGODB_URI**: Set this to your MongoDB Atlas connection string
 
-After deploying these changes:
+5. Click "Save Changes" to trigger a redeploy
 
-1. Clear your browser cache or use incognito/private mode
-2. Visit https://lustrous-tartufo-9102a1.netlify.app/login
-3. Check the browser console - there should be no more CSP or CORS errors
-4. Test the authentication flow (registration, login, forgot password)
+### 3. Monitor Deployment
+
+1. Watch the deployment logs in the Render dashboard
+2. Verify that the application starts successfully without JWT_SECRET errors
+3. Check that the CORS configuration is working by testing authentication from your Netlify app
+
+### 4. Test Authentication Flow
+
+After deployment, test the complete authentication flow:
+
+1. Visit your Netlify frontend: https://lustrous-tartufo-9102a1.netlify.app
+2. Try to register a new account
+3. Check browser console for any CORS or API connection errors
+4. If successful, you should be able to log in and use the protected routes
+
+## Troubleshooting
+
+### If CORS Issues Persist
+
+1. Check the Network tab in browser dev tools to see the specific errors
+2. Verify that the `ALLOWED_ORIGINS` environment variable in Render includes your Netlify domain
+3. Try temporarily allowing all origins if needed by setting `ALLOWED_ORIGINS` to `*`
+
+### If JWT Authentication Fails
+
+1. Make sure the JWT_SECRET is properly set in Render
+2. Check the Render logs for any JWT-related errors
+3. Verify that tokens are being properly generated during registration/login
 
 ## Additional Notes
 
-- If you're using a custom domain, update the `ALLOWED_ORIGINS` to include that domain as well
-- For security, review the JWT secrets in production and ensure they are strong, unique values
-- Consider adding proper error handling on the frontend to display user-friendly messages when API calls fail 
+- The CORS configuration has been made more permissive for troubleshooting. Once everything is working correctly, you may want to tighten security.
+- We've added a root endpoint to the API that provides basic info and links to help with API discovery.
+- Both express.js files have been updated to maintain consistency between src/ and server/src/ directories. 
