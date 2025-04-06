@@ -121,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await authService.login(credentials);
       
-      if (response.success && response.data) {
+      if (response.status === 200 && response.data) {
         // Update auth state
         setState({
           user: response.data.user,
@@ -134,10 +134,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Show success message
         showSuccess('Logged in successfully');
         
-        // Force a complete page reload with the full URL instead of client-side navigation
-        setTimeout(() => {
-          window.location.replace(`${window.location.origin}/dashboard`);
-        }, 100);
+        // Use React Router navigation instead of force reload
+        // This maintains the React application state
+        navigate('/dashboard');
         
         return;
       }
@@ -167,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await authService.register(credentials);
       
-      if (response.success && response.data) {
+      if (response.status === 201 && response.data) {
         // Update auth state
         setState({
           user: response.data.user,
@@ -180,10 +179,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Show success message in green
         showSuccess('Registration successful');
         
-        // Force a complete page reload with the full URL instead of client-side navigation
-        setTimeout(() => {
-          window.location.replace(`${window.location.origin}/dashboard`);
-        }, 100);
+        // Use React Router navigation instead of force reload
+        navigate('/dashboard');
         
         return;
       }
