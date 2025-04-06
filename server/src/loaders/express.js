@@ -114,12 +114,17 @@ const initExpress = (app) => {
   // API routes
   app.use(env.API_PREFIX, routes);
   
-  // Direct route handler for /auth/* requests (for backward compatibility with clients)
-  // This ensures requests to /auth/register etc. work even without the API prefix
-  app.use('/auth', routes.auth);
+  // Direct route handlers for backward compatibility with clients
+  // This ensures requests work even without the API prefix
+  app.use('/auth', cors(), routes.auth);
   
-  // Health check endpoint
-  app.get('/health', (req, res) => {
+  // Add more direct routes for other API endpoints if needed
+  app.use('/flashcard-sets', cors(), routes.flashcardSets);
+  app.use('/processor', cors(), routes.processor);
+  app.use('/users', cors(), routes.users);
+  
+  // Health check endpoint with explicit CORS
+  app.get('/health', cors({ origin: '*' }), (req, res) => {
     res.status(StatusCodes.OK).json({
       status: 'UP',
       timestamp: new Date().toISOString(),
@@ -137,6 +142,7 @@ const initExpress = (app) => {
       health: `${req.protocol}://${req.get('host')}/health`,
       api: `${req.protocol}://${req.get('host')}${env.API_PREFIX}`,
       environment: env.NODE_ENV,
+      status: 'UP'
     });
   });
   
