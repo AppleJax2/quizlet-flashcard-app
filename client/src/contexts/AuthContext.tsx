@@ -134,10 +134,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Show success message
         showSuccess('Logged in successfully');
         
-        // Use window.location for a full page navigation instead of React Router
+        // Force a complete page reload with the full URL instead of client-side navigation
         setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 500);
+          window.location.replace(`${window.location.origin}/dashboard`);
+        }, 100);
         
         return;
       }
@@ -180,10 +180,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Show success message in green
         showSuccess('Registration successful');
         
-        // Use window.location for a full page navigation instead of React Router
+        // Force a complete page reload with the full URL instead of client-side navigation
         setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 500);
+          window.location.replace(`${window.location.origin}/dashboard`);
+        }, 100);
         
         return;
       }
