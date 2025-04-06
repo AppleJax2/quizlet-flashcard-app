@@ -133,10 +133,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Show success message
         toast.success('Logged in successfully');
         
-        // Force navigation to dashboard after a short delay
+        // Use window.location for a full page navigation instead of React Router
         setTimeout(() => {
-          navigate('/dashboard');
-        }, 100);
+          window.location.href = '/dashboard';
+        }, 500);
         
         return;
       }
@@ -175,10 +175,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Show success message in green
         toast.success('Registration successful');
         
-        // Force navigation to dashboard after a short delay
+        // Use window.location for a full page navigation instead of React Router
         setTimeout(() => {
-          navigate('/dashboard');
-        }, 100);
+          window.location.href = '/dashboard';
+        }, 500);
         
         return;
       }
