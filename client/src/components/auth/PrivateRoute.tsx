@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/lib/store';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 
 interface PrivateRouteProps {
@@ -9,20 +9,26 @@ interface PrivateRouteProps {
 }
 
 export default function PrivateRoute({ children }: PrivateRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, loadUser, user } = useAuthStore();
   const location = useLocation();
 
-  // Show loading screen while checking authentication
-  if (isLoading) {
+  useEffect(() => {
+    if (user === null && !isLoading) {
+      loadUser();
+    }
+  }, [loadUser, user, isLoading]);
+
+  if (isLoading || user === null) {
+    const token = localStorage.getItem('token');
+    if (!token && !isLoading) {
+      return <Navigate to="/login" state={{ from: location }} replace />;
+    }
     return <LoadingScreen message="Verifying your authentication..." />;
   }
 
-  // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    // Redirect to login page and save the location user was trying to access
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Render the protected route or children
   return children || <Outlet />;
 } 
