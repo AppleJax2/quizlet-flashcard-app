@@ -15,7 +15,7 @@ class AuthService {
 
   // Login with email and password
   async login(credentials: LoginCredentials) {
-    const response = await apiService.post<ApiResponse<{ user: User; token: string }>>('/auth/login', credentials);
+    const response = await apiService.post<ApiResponse<{ user: User; token: string }>>('/api/v1/auth/login', credentials);
     if (response.status === 200 && response.data) {
       this.setToken(response.data.token);
       this.setUser(response.data.user);
@@ -25,7 +25,7 @@ class AuthService {
 
   // Register a new user
   async register(credentials: RegisterCredentials) {
-    const response = await apiService.post<ApiResponse<{ user: User; token: string }>>('/auth/register', credentials);
+    const response = await apiService.post<ApiResponse<{ user: User; token: string }>>('/api/v1/auth/register', credentials);
     if (response.status === 201 && response.data) {
       this.setToken(response.data.token);
       this.setUser(response.data.user);

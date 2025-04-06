@@ -27,55 +27,40 @@ if (!fs.existsSync(logsDir)) {
  * @param {Object} app - Express app instance
  */
 const initExpress = (app) => {
-  // Security middleware - configure based on environment
+  // CORS must be enabled BEFORE any other middleware
+  // Always allow requests from the Netlify frontend
+  const allowedOrigins = ['https://lustrous-tartufo-9102a1.netlify.app', 'http://localhost:3000', 'http://localhost:5173'];
+  
+  // Force enable CORS for development and troubleshooting
+  app.use(cors({
+    origin: function(origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl requests)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.includes(origin) || env.isDevelopment()) {
+        return callback(null, true);
+      } else {
+        logger.warn(`CORS blocked request from origin: ${origin}`);
+        // During troubleshooting, allow all origins
+        return callback(null, true);
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-HTTP-Method-Override', 'Accept'],
+    exposedHeaders: ['X-Total-Count', 'X-Pagination-Total', 'X-Request-ID'],
+    credentials: true,
+    maxAge: 86400, // 24 hours
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  }));
+  
+  // Handle preflight requests for all routes (crucial for CORS)
+  app.options('*', cors());
+  
+  // Security middleware
   app.use(helmet({
     contentSecurityPolicy: env.isProduction() ? undefined : false
   }));
-  
-  // CORS configuration - simplified and more permissive for troubleshooting
-  const allowedOrigins = ['https://lustrous-tartufo-9102a1.netlify.app', 'http://localhost:3000', 'http://localhost:5173'];
-  
-  // In development or if specifically configured, allow all origins
-  if (env.isDevelopment() || env.ALLOWED_ORIGINS.includes('*')) {
-    logger.info('CORS: All origins allowed (development mode or wildcard configured)');
-    app.use(cors({
-      origin: '*',
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-HTTP-Method-Override', 'Accept'],
-      exposedHeaders: ['X-Total-Count', 'X-Pagination-Total', 'X-Request-ID'],
-      credentials: true,
-      maxAge: 86400, // 24 hours
-      preflightContinue: false,
-      optionsSuccessStatus: 204,
-    }));
-  } else {
-    // In production, only allow specific origins
-    logger.info(`CORS: Allowing specific origins: ${allowedOrigins.concat(env.ALLOWED_ORIGINS).join(', ')}`);
-    app.use(cors({
-      origin: function(origin, callback) {
-        // Allow requests with no origin (like mobile apps, curl requests)
-        if (!origin) return callback(null, true);
-        
-        const combined = [...new Set([...allowedOrigins, ...env.ALLOWED_ORIGINS])];
-        if (combined.indexOf(origin) !== -1) {
-          return callback(null, true);
-        } else {
-          logger.warn(`CORS blocked request from origin: ${origin}`);
-          return callback(null, true); // Temporarily allow all origins to troubleshoot
-        }
-      },
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-HTTP-Method-Override', 'Accept'],
-      exposedHeaders: ['X-Total-Count', 'X-Pagination-Total', 'X-Request-ID'],
-      credentials: true,
-      maxAge: 86400, // 24 hours
-      preflightContinue: false,
-      optionsSuccessStatus: 204,
-    }));
-  }
-  
-  // Handle preflight requests explicitly
-  app.options('*', cors());
   
   // Request ID middleware for request tracking
   app.use((req, res, next) => {
@@ -128,6 +113,10 @@ const initExpress = (app) => {
   
   // API routes
   app.use(env.API_PREFIX, routes);
+  
+  // Direct route handler for /auth/* requests (for backward compatibility with clients)
+  // This ensures requests to /auth/register etc. work even without the API prefix
+  app.use('/auth', routes.auth);
   
   // Health check endpoint
   app.get('/health', (req, res) => {
