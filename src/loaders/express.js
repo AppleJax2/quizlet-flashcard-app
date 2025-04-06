@@ -31,24 +31,10 @@ const initExpress = (app) => {
   // This is needed for express-rate-limit to get the correct client IP
   app.set('trust proxy', 1);
   
-  // CORS must be enabled BEFORE any other middleware
-  // Always allow requests from the Netlify frontend
-  const allowedOrigins = ['https://lustrous-tartufo-9102a1.netlify.app', 'http://localhost:3000', 'http://localhost:5173'];
-  
-  // Force enable CORS for development and troubleshooting
+  // CORS Configuration - allowing all origins during troubleshooting
+  // This is more permissive to fix the CORS errors
   app.use(cors({
-    origin: function(origin, callback) {
-      // Allow requests with no origin (like mobile apps, curl requests)
-      if (!origin) return callback(null, true);
-      
-      if (allowedOrigins.includes(origin) || env.isDevelopment()) {
-        return callback(null, true);
-      } else {
-        logger.warn(`CORS blocked request from origin: ${origin}`);
-        // During troubleshooting, allow all origins
-        return callback(null, true);
-      }
-    },
+    origin: '*', // Allow all origins while troubleshooting CORS issues
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-HTTP-Method-Override', 'Accept'],
     exposedHeaders: ['X-Total-Count', 'X-Pagination-Total', 'X-Request-ID'],
@@ -58,12 +44,12 @@ const initExpress = (app) => {
     optionsSuccessStatus: 204,
   }));
   
-  // Handle preflight requests for all routes (crucial for CORS)
-  app.options('*', cors());
+  // Ensure OPTIONS requests are handled correctly for CORS preflight
+  app.options('*', cors({ origin: '*' }));
   
-  // Security middleware
+  // Security middleware - Disable contentSecurityPolicy to avoid CORS-related issues
   app.use(helmet({
-    contentSecurityPolicy: env.isProduction() ? undefined : false
+    contentSecurityPolicy: false
   }));
 
   // Request ID middleware for request tracking
