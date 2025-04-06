@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { AuthService, type User } from '@/lib/api/services';
+import authServiceInstance from '@/services/auth.service';
+import { type User } from '@/types';
 
 interface AuthState {
   user: User | null;
@@ -27,12 +28,15 @@ export const useAuthStore = create<AuthState>()(
       login: async (email: string, password: string) => {
         try {
           set({ isLoading: true, error: null });
-          const authService = AuthService.getInstance();
-          const response = await authService.login({ email, password });
+          const response = await authServiceInstance.login({ email, password });
           
-          if (!response.success || !response.data) {
-            throw new Error(response.message || 'Login failed');
+          if (response.status !== 200 || !response.data) {
+            throw new Error(response.message || response.error || 'Login failed');
           }
+
+          // Explicitly save token and user data via the service instance
+          authServiceInstance.setToken(response.data.token);
+          authServiceInstance.setUser(response.data.user);
           
           set({
             user: response.data.user,
@@ -51,18 +55,21 @@ export const useAuthStore = create<AuthState>()(
       register: async (username: string, email: string, password: string, confirmPassword: string) => {
         try {
           set({ isLoading: true, error: null });
-          const authService = AuthService.getInstance();
-          const response = await authService.register({
+          const response = await authServiceInstance.register({
             username,
             email,
             password,
             confirmPassword,
           });
           
-          if (!response.success || !response.data) {
-            throw new Error(response.message || 'Registration failed');
+          if (response.status !== 201 || !response.data) {
+            throw new Error(response.message || response.error || 'Registration failed');
           }
           
+          // Explicitly save token and user data via the service instance
+          authServiceInstance.setToken(response.data.token);
+          authServiceInstance.setUser(response.data.user);
+
           set({
             user: response.data.user,
             isAuthenticated: true,
@@ -78,30 +85,32 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        const authService = AuthService.getInstance();
-        authService.logout();
+        authServiceInstance.clearAuth(); // This should handle removing token/user from localStorage
         set({
           user: null,
           isAuthenticated: false,
           error: null,
+          isLoading: false, // Also reset loading state
         });
       },
 
       loadUser: async () => {
         try {
           set({ isLoading: true, error: null });
-          const authService = AuthService.getInstance();
           
-          // Only attempt to load user if we have a token
-          if (!authService.isAuthenticated()) {
-            set({ isLoading: false });
+          // Use the service method to check authentication state
+          const token = authServiceInstance.getToken();
+          if (!token) {
+            set({ isLoading: false, isAuthenticated: false, user: null });
             return;
           }
           
-          const response = await authService.getCurrentUser();
+          // Attempt to fetch the current user profile
+          const response = await authServiceInstance.getCurrentUser();
           
-          if (!response.success || !response.data) {
-            throw new Error(response.message || 'Failed to load user');
+          if (response.status !== 200 || !response.data) {
+            authServiceInstance.clearAuth(); // Clear invalid token if fetch fails
+            throw new Error(response.message || response.error || 'Failed to load user');
           }
           
           set({
@@ -110,16 +119,13 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
         } catch (error) {
+          authServiceInstance.clearAuth(); // Ensure clearAuth if any error occurs during load
           set({
             user: null,
             isAuthenticated: false,
             isLoading: false,
             error: error instanceof Error ? error.message : 'An unexpected error occurred',
           });
-          
-          // If we fail to load the user, clear the token
-          const authService = AuthService.getInstance();
-          authService.logout();
         }
       },
 
@@ -127,9 +133,9 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
+      // Only persist minimal state; token is handled by AuthService
       partialize: (state) => ({
-        user: state.user,
-        isAuthenticated: state.isAuthenticated,
+        // Don't persist user/isAuthenticated here, rely on loadUser on app start
       }),
     }
   )
