@@ -13,12 +13,12 @@
 [context.production.environment]
   VITE_NODE_ENV = "production"
   # This will be the deployed backend URL
-  VITE_API_URL = "https://quizlet-flashcard-api.onrender.com/api/v1"
+  VITE_API_URL = "https://quizlet-flashcard-app-1.onrender.com/api/v1"
 
 # Environmental variables for development branches
 [context.branch-deploy.environment]
   VITE_NODE_ENV = "development"
-  VITE_API_URL = "https://quizlet-flashcard-api.onrender.com/api/v1"
+  VITE_API_URL = "https://quizlet-flashcard-app-1.onrender.com/api/v1"
 
 # Cache static assets
 [[headers]]
@@ -34,4 +34,4 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'; connect-src 'self' https://quizlet-flashcard-api.onrender.com;" 
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'; connect-src 'self' https://quizlet-flashcard-app-1.onrender.com;" 

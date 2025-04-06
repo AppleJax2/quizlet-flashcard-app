@@ -1,7 +1,7 @@
 services:
   # Web Service for the Quizlet Flashcard Generator
   - type: web
-    name: quizlet-flashcard-api
+    name: quizlet-flashcard-app-1
     env: node
     runtime: node:18
     region: oregon
