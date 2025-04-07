@@ -13,9 +13,12 @@ export interface ApiResponse<T = any> {
   };
 }
 
+// Get API URL from Vite environment variables
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+
 // API client configuration
 const API_CONFIG = {
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1',
+  baseURL: API_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
