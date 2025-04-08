@@ -34,7 +34,7 @@ export interface RetryConfig {
  */
 class ApiClient {
   private instance: AxiosInstance;
-  private authTokenKey = 'auth_token';
+  private authTokenKey = 'token';
   private defaultRetryConfig: RetryConfig = {
     maxRetries: 3,
     retryDelay: 1000,

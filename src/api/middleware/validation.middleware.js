@@ -34,6 +34,9 @@ const validateRequest = (schema, property = 'body') => {
         type: detail.type,
       }));
       
+      // Log the specific validation errors for debugging
+      console.error('Validation Error Details:', JSON.stringify(validationErrors, null, 2));
+      
       // Create structured error object
       const errorResponse = {
         error: 'Validation Error',
