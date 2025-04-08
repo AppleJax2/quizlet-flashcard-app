@@ -27,22 +27,25 @@ if (!fs.existsSync(logsDir)) {
  * @param {Object} app - Express app instance
  */
 const initExpress = (app) => {
-  // CORS must be enabled BEFORE any other middleware
-  // Always allow requests from the Netlify frontend
-  const allowedOrigins = ['https://lustrous-tartufo-9102a1.netlify.app', 'http://localhost:3000', 'http://localhost:5173'];
+  // Define allowed origins for CORS from environment variable or fallback to defaults
+  const allowedOriginsString = process.env.ALLOWED_ORIGINS || 'https://lustrous-tartufo-9102a1.netlify.app,http://localhost:3000,http://localhost:5173';
+  const allowedOrigins = allowedOriginsString.split(',').map(origin => origin.trim());
   
-  // Force enable CORS for development and troubleshooting
-  app.use(cors({
+  logger.info(`CORS allowed origins: ${JSON.stringify(allowedOrigins)}`);
+  
+  // Configure CORS using a single middleware instance
+  const corsOptions = {
     origin: function(origin, callback) {
-      // Allow requests with no origin (like mobile apps, curl requests)
+      // Allow requests with no origin (e.g., server-to-server, curl)
       if (!origin) return callback(null, true);
       
-      if (allowedOrigins.includes(origin) || env.isDevelopment()) {
+      // Check if the origin is allowed or if wildcard is included
+      if (allowedOrigins.includes(origin) || allowedOrigins.includes('*') || env.isDevelopment()) {
         return callback(null, true);
       } else {
+        // Block other origins in non-development environments
         logger.warn(`CORS blocked request from origin: ${origin}`);
-        // During troubleshooting, allow all origins
-        return callback(null, true);
+        return callback(new Error('Not allowed by CORS'), false);
       }
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -50,16 +53,24 @@ const initExpress = (app) => {
     exposedHeaders: ['X-Total-Count', 'X-Pagination-Total', 'X-Request-ID'],
     credentials: true,
     maxAge: 86400, // 24 hours
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
-  }));
-  
-  // Handle preflight requests for all routes (crucial for CORS)
-  app.options('*', cors());
+    optionsSuccessStatus: 204, // Use 204 for preflight success
+  };
+
+  // Apply CORS middleware globally
+  app.use(cors(corsOptions));
   
   // Security middleware
   app.use(helmet({
-    contentSecurityPolicy: env.isProduction() ? undefined : false
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'", ...allowedOrigins]
+      }
+    }
   }));
   
   // Request ID middleware for request tracking
@@ -116,15 +127,15 @@ const initExpress = (app) => {
   
   // Direct route handlers for backward compatibility with clients
   // This ensures requests work even without the API prefix
-  app.use('/auth', cors(), routes.auth);
+  app.use('/auth', routes.auth);
   
   // Add more direct routes for other API endpoints if needed
-  app.use('/flashcard-sets', cors(), routes.flashcardSets);
-  app.use('/processor', cors(), routes.processor);
-  app.use('/users', cors(), routes.users);
+  app.use('/flashcard-sets', routes.flashcardSets);
+  app.use('/processor', routes.processor);
+  app.use('/users', routes.users);
   
   // Health check endpoint with explicit CORS
-  app.get('/health', cors({ origin: '*' }), (req, res) => {
+  app.get('/health', cors(corsOptions), (req, res) => {
     res.status(StatusCodes.OK).json({
       status: 'UP',
       timestamp: new Date().toISOString(),
