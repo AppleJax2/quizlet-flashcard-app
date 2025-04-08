@@ -26,7 +26,7 @@ const registerSchema = Joi.object({
     .message('Password must contain at least one uppercase letter, one lowercase letter, and one number')
     .required()
     .messages(messages),
-  confirmPassword: Joi.string().valid(Joi.ref('password')).required()
+  confirmPassword: Joi.string().valid(Joi.ref('password')).optional()
     .messages({ 'any.only': 'Passwords do not match', ...messages }),
 });
 
