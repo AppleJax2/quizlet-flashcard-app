@@ -1,5 +1,6 @@
 const { StatusCodes } = require('http-status-codes');
 const { errors } = require('../utils');
+const logger = require('../utils/logger');
 
 /**
  * Middleware for validating request data against Joi schemas
@@ -27,6 +28,10 @@ const validateRequest = (schema, property = 'body') => {
     });
     
     if (error) {
+      // Log the detailed validation errors from Joi
+      logger.error('Joi validation failed for property:', property);
+      logger.error('Joi validation details:', JSON.stringify(error.details, null, 2));
+
       // Extract and format validation errors
       const validationErrors = error.details.map(detail => ({
         field: detail.context.key || detail.path.join('.'),
