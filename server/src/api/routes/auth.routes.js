@@ -9,6 +9,12 @@ const router = express.Router();
 router.post(
   '/register',
   authLimiter,
+  (req, res, next) => {
+    console.log('==== REGISTER REQUEST BODY ====');
+    console.log(JSON.stringify(req.body, null, 2));
+    console.log('==============================');
+    next();
+  },
   validateRequest(validationSchemas.registerSchema),
   authController.register
 );
