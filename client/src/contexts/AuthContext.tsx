@@ -84,6 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (email: string, password: string, username: string, confirmPassword?: string) => {
     try {
       setError(null);
+      console.log('Sending registration payload:', { email, password, username, confirmPassword });
       const response = await apiClient.post<AuthResponse>('/auth/register', { email, password, username, confirmPassword });
       if (response.error) {
         setError(response.error.message || 'An error occurred during signup');
