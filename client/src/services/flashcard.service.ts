@@ -16,19 +16,27 @@ class FlashcardService {
 
   // Get all flashcard sets for the authenticated user
   async getFlashcardSets(params?: FlashcardSetQueryParams) {
-    return apiService.get<FlashcardSetSearchResults>(this.endpoint, params);
+    return apiService.get<FlashcardSetSearchResults>(this.endpoint, params ? { params } : undefined);
+  }
+
+  // Get recent flashcard sets for the authenticated user
+  async getRecentSets(limit = 6) {
+    const result = await this.getFlashcardSets({ limit, sortBy: 'updatedAt', order: 'desc' });
+    return result.results || [];
   }
 
   // Get public flashcard sets
   async getPublicFlashcardSets(params?: FlashcardSetQueryParams) {
-    return apiService.get<FlashcardSetSearchResults>(`${this.endpoint}/public`, params);
+    return apiService.get<FlashcardSetSearchResults>(`${this.endpoint}/public`, params ? { params } : undefined);
   }
 
   // Search flashcard sets
   async searchFlashcardSets(query: string, params?: Omit<FlashcardSetQueryParams, 'search'>) {
     return apiService.get<FlashcardSetSearchResults>(`${this.endpoint}/search`, {
-      search: query,
-      ...params,
+      params: {
+        search: query,
+        ...(params || {})
+      }
     });
   }
 

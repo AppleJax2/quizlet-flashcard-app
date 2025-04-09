@@ -203,7 +203,33 @@ class ApiClient {
    */
   public async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
     try {
-      const response = await this.instance.post<T>(url, data, config);
+      // Special handling for registration
+      if (url === '/auth/register') {
+        // Ensure all required fields are present
+        const { email, password, username, confirmPassword } = data;
+        if (!email || !password || !username || !confirmPassword) {
+          return this.processError({
+            response: {
+              status: 400,
+              data: {
+                code: 'validation_error',
+                message: 'All fields are required for registration',
+                details: { missing: Object.entries({ email, password, username, confirmPassword })
+                  .filter(([_, v]) => !v)
+                  .map(([k]) => k) }
+              }
+            }
+          });
+        }
+      }
+      
+      const response = await this.instance.post<T>(url, data, {
+        ...config,
+        headers: {
+          ...config?.headers,
+          'Content-Type': 'application/json'
+        }
+      });
       return this.processResponse<T>(response);
     } catch (error) {
       return this.processError(error);

@@ -6,12 +6,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="AI-powered flashcard generator that helps you learn faster and remember more" />
     <meta name="theme-color" content="#3B82F6" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://quizlet-flashcard-app-1.onrender.com;" />
     <title>Quizlet - AI Flashcard Generator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="/assets/index-e5c45bb7.js"></script>
-    <link rel="stylesheet" href="/assets/index-aaf9803b.css">
+    <!-- Enhanced Node.js Polyfill -->
+    <script>
+      // Required polyfills for compatibility with Node.js environment
+      window.process = window.process || {
+        env: {
+          NODE_ENV: 'production',
+          VITE_API_URL: '/api/v1'
+        },
+        browser: true,
+        version: '0.0.0',
+        versions: { 
+          node: '0.0.0' 
+        },
+        nextTick: function(cb) { setTimeout(cb, 0); },
+        platform: navigator && /Win/.test(navigator.platform) ? 'win32' : 'browser'
+      };
+      window.global = window.global || window;
+      window.Buffer = window.Buffer || { 
+        isBuffer: function() { return false; },
+        from: function() { return []; }
+      };
+    </script>
+    <script type="module" crossorigin src="/assets/index-f8d0b61e.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-5b64d0ef.js">
+    <link rel="stylesheet" href="/assets/index-a3b52dae.css">
   </head>
   <body class="bg-neutral-50 text-neutral-900 font-sans antialiased">
     <div id="root"></div>

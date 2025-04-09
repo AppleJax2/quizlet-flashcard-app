@@ -12,12 +12,8 @@ interface ImportMeta {
 // Original API URL 
 const ORIGINAL_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
 
-// Use a CORS proxy to bypass CORS restrictions
-// This is a public CORS proxy service - consider using a more reliable one for production
-const CORS_PROXY = 'https://cors-anywhere.herokuapp.com/';
-
-// Apply the CORS proxy to the API URL
-const API_BASE_URL = CORS_PROXY + ORIGINAL_API_URL;
+// Set the API base URL directly
+const API_BASE_URL = ORIGINAL_API_URL;
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, any>;
@@ -32,14 +28,9 @@ class ApiService {
 
     // Build URL with query parameters
     let url: URL;
-    
-    // If the endpoint is already a full URL (starts with http/https), use it directly with the proxy
-    if (endpoint.startsWith('http')) {
-      url = new URL(CORS_PROXY + endpoint);
-    } else {
-      // Otherwise, combine with the base URL which already includes the proxy
-      url = new URL(endpoint, API_BASE_URL);
-    }
+
+    // Construct the URL using the base URL
+    url = new URL(endpoint, API_BASE_URL);
     
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -63,18 +54,23 @@ class ApiService {
       headers.set('Content-Type', 'application/json');
     }
     
-    // Add header required by cors-anywhere
-    headers.set('X-Requested-With', 'XMLHttpRequest');
-
     try {
       console.log(`Making request to: ${url.toString()}`); // Debug logging
       
       const response = await fetch(url.toString(), {
         ...init,
         headers,
-        // Force mode to 'cors' to use the proxy correctly
-        mode: 'cors',
+        // Removed mode: 'cors'
       });
+
+      console.log(`Response status: ${response.status}`);
+      
+      // For debugging, log the raw response text before parsing JSON
+      const responseText = await response.text();
+      console.log(`Response body: ${responseText}`);
+      
+      // Convert text back to response for further processing
+      const responseData = responseText ? JSON.parse(responseText) : null;
 
       // Handle unauthorized access
       if (response.status === 401) {
@@ -88,8 +84,16 @@ class ApiService {
 
       // Handle non-2xx responses
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || `API Error: ${response.status}`);
+        // Use the already parsed response data
+        const errorData = responseData || {};
+        
+        // Special case: if the response has success=true, don't treat it as an error
+        // This handles cases where the API returns success data with a non-2XX status code
+        if (errorData.success === true) {
+          return errorData;
+        }
+        
+        throw new Error(errorData.message || `API Error: ${response.status}`);
       }
 
       // Return null for 204 No Content
@@ -97,7 +101,7 @@ class ApiService {
         return null as T;
       }
 
-      return response.json();
+      return responseData;
     } catch (error) {
       console.error('API request error:', error); // Debug logging
       if (error instanceof Error) {

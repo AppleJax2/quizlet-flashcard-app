@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -53,7 +53,7 @@ export default function AboutPage() {
             <h2 className="text-3xl font-bold text-neutral-900 mb-6">Our Mission</h2>
             <p className="text-xl text-neutral-700 leading-relaxed">
               At FlashLeap, we're dedicated to helping students and professionals learn more efficiently. 
-              We believe that technology should enhance the learning process, not complicate it.
+              We believe that technology should enhance the learning REPLACED, not complicate it.
               Our mission is to create tools that transform any content into effective learning materials,
               making knowledge more accessible and retention more achievable.
             </p>

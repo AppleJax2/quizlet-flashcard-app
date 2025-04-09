@@ -1,41 +1,33 @@
-import React, { useEffect } from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
-
-import { useAuthStore } from '@/lib/store';
+import React from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
 }
 
-export default function PrivateRoute({ children }: PrivateRouteProps) {
-  const { isAuthenticated, isLoading, loadUser, user } = useAuthStore();
+/**
+ * A wrapper component that protects routes requiring authentication.
+ * If the user is not authenticated, they will be redirected to the login page.
+ * The current location is saved so the user can be redirected back after login.
+ */
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
-  useEffect(() => {
-    // Attempt to load user details if we think we are authenticated but don't have user details yet.
-    // This handles the case after page refresh where `isAuthenticated` might be true from persisted state,
-    // but `user` details need to be fetched.
-    if (isAuthenticated && user === null && !isLoading) {
-      loadUser();
-    }
-    // If we are not authenticated and there's no user, ensure state is clean (e.g., clear potential stale user)
-    // Note: loadUser already handles clearing state on failure.
-  }, [isAuthenticated, user, isLoading, loadUser]);
-
-  // If still loading user data explicitly, show loading screen.
-  if (isLoading) {
-    return <LoadingScreen message="Verifying your authentication..." />;
+  // Show loading screen while checking authentication
+  if (loading) {
+    return <LoadingScreen message="Checking authentication..." />;
   }
 
-  // After loading attempt, if not authenticated, redirect to login.
-  // This relies on `loadUser` correctly setting `isAuthenticated` to false on failure.
+  // If not authenticated, redirect to login page
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If authenticated and not loading, render the protected route.
-  // We might still not have the user object briefly if loadUser is slow,
-  // but the route is protected by isAuthenticated.
-  return children || <Outlet />;
-} 
+  // If authenticated, render the children components
+  return <>{children}</>;
+};
+
+export default PrivateRoute; 

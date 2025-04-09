@@ -27,19 +27,45 @@ export const urlSchema = z
   .string()
   .url({ message: 'Invalid URL' });
 
-// Form schemas
+/**
+ * Schema for login form validation
+ */
 export const loginFormSchema = z.object({
-  email: emailSchema,
-  password: z.string().min(1, { message: 'Password is required' }),
+  email: z
+    .string()
+    .min(1, { message: 'Email is required' })
+    .email({ message: 'Invalid email address' }),
+  password: z
+    .string()
+    .min(1, { message: 'Password is required' }),
 });
 
+/**
+ * Schema for registration form validation
+ */
 export const registerFormSchema = z.object({
-  username: usernameSchema,
-  email: emailSchema,
-  password: passwordSchema,
-  confirmPassword: z.string().min(1, { message: 'Please confirm your password' }),
+  username: z
+    .string()
+    .min(3, { message: 'Username must be at least 3 characters' })
+    .max(50, { message: 'Username must be at most 50 characters' })
+    .regex(/^[a-zA-Z0-9_-]+$/, {
+      message: 'Username can only contain letters, numbers, underscores, and hyphens',
+    }),
+  email: z
+    .string()
+    .min(1, { message: 'Email is required' })
+    .email({ message: 'Invalid email address' }),
+  password: z
+    .string()
+    .min(8, { message: 'Password must be at least 8 characters' })
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/, {
+      message: 'Password must contain at least one uppercase letter, one lowercase letter, and one number',
+    }),
+  confirmPassword: z
+    .string()
+    .min(1, { message: 'Please confirm your password' }),
 }).refine(data => data.password === data.confirmPassword, {
-  message: 'Passwords do not match',
+  message: "Passwords don't match",
   path: ['confirmPassword'],
 });
 
@@ -120,4 +146,80 @@ export const generationParamsFormSchema = z.object({
   description: z.string().optional(),
   tags: z.array(z.string()).optional(),
   isPublic: z.boolean().optional(),
+});
+
+/**
+ * Schema for profile form validation
+ */
+export const profileFormSchema = z.object({
+  name: z
+    .string()
+    .min(2, { message: 'Name must be at least 2 characters' })
+    .max(50, { message: 'Name must be at most 50 characters' }),
+  email: z
+    .string()
+    .min(1, { message: 'Email is required' })
+    .email({ message: 'Invalid email address' }),
+  bio: z
+    .string()
+    .max(500, { message: 'Bio must be at most 500 characters' })
+    .optional(),
+});
+
+/**
+ * Schema for create flashcard form validation
+ */
+export const flashcardFormSchema = z.object({
+  question: z
+    .string()
+    .min(3, { message: 'Question must be at least 3 characters' })
+    .max(500, { message: 'Question must be at most 500 characters' }),
+  answer: z
+    .string()
+    .min(1, { message: 'Answer is required' })
+    .max(1000, { message: 'Answer must be at most 1000 characters' }),
+  deck: z
+    .string()
+    .min(1, { message: 'Please select a deck' }),
+  tags: z
+    .array(z.string())
+    .optional(),
+  difficulty: z
+    .enum(['easy', 'medium', 'hard'])
+    .optional(),
+});
+
+/**
+ * Schema for create deck form validation
+ */
+export const deckFormSchema = z.object({
+  name: z
+    .string()
+    .min(3, { message: 'Deck name must be at least 3 characters' })
+    .max(50, { message: 'Deck name must be at most 50 characters' }),
+  description: z
+    .string()
+    .max(500, { message: 'Description must be at most 500 characters' })
+    .optional(),
+  isPublic: z
+    .boolean()
+    .default(false),
+});
+
+/**
+ * Schema for password reset form validation
+ */
+export const passwordResetFormSchema = z.object({
+  password: z
+    .string()
+    .min(8, { message: 'Password must be at least 8 characters' })
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/, {
+      message: 'Password must contain at least one uppercase letter, one lowercase letter, and one number',
+    }),
+  confirmPassword: z
+    .string()
+    .min(1, { message: 'Please confirm your password' }),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
 }); 

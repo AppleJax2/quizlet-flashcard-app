@@ -11,7 +11,10 @@ interface LoadingScreenProps {
   className?: string;
 }
 
-export default function LoadingScreen({
+/**
+ * A full-screen loading indicator to display while content is loading
+ */
+const LoadingScreen: React.FC<LoadingScreenProps> = ({
   message = 'Loading...',
   fullScreen = false,
   transparent = false,
@@ -19,7 +22,7 @@ export default function LoadingScreen({
   size = 'md',
   variant = 'spinner',
   className,
-}: LoadingScreenProps) {
+}) => {
   // Color classes for different states
   const colorClasses = {
     primary: 'text-primary-500',
@@ -185,4 +188,6 @@ export default function LoadingScreen({
       )}
     </div>
   );
-} 
+};
+
+export default LoadingScreen; 

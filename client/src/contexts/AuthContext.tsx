@@ -18,7 +18,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  signup: (email: string, password: string, username: string, confirmPassword?: string) => Promise<void>;
+  signup: (email: string, password: string, username: string, confirmPassword: string) => Promise<void>;
   loading: boolean;
   error: string | null;
 }
@@ -81,11 +81,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signup = async (email: string, password: string, username: string, confirmPassword?: string) => {
+  const signup = async (email: string, password: string, username: string, confirmPassword: string) => {
     try {
       setError(null);
-      console.log('Sending registration payload:', { email, password, username, confirmPassword });
-      const response = await apiClient.post<AuthResponse>('/auth/register', { email, password, username, confirmPassword });
+      const payload = { email, password, username, confirmPassword };
+      console.log('--- Preparing to send registration payload ---');
+      console.log('Payload Content:', JSON.stringify(payload, null, 2));
+      console.log('Payload Keys:', Object.keys(payload));
+      console.log('confirmPassword presence:', 'confirmPassword' in payload);
+      console.log('confirmPassword value:', payload.confirmPassword);
+      console.log('-----------------------------------------------');
+      
+      // Ensure all required fields are present
+      if (!email || !password || !username || !confirmPassword) {
+        throw new Error('All fields are required');
+      }
+      
+      const response = await apiClient.post<AuthResponse>('/auth/register', payload);
       if (response.error) {
         setError(response.error.message || 'An error occurred during signup');
         throw new Error(response.error.message);

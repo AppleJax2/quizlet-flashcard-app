@@ -30,7 +30,27 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: true, error: null });
           const response = await authServiceInstance.login({ email, password });
           
+          // The server sends a message 'Login successful' when authentication succeeds
+          // Don't treat this as an error
           if (response.status !== 200 || !response.data) {
+            // Skip throwing an error if the message indicates success
+            if (response.message === 'Login successful') {
+              // This is actually a successful login despite being in the error handler
+              // Since we have a successful login message but no data, we need to 
+              // either fetch the user data or set a flag to load it
+              set({
+                isAuthenticated: true,
+                isLoading: false,
+              });
+              
+              // Try to load user data
+              setTimeout(() => {
+                get().loadUser();
+              }, 100);
+              
+              return;
+            }
+            
             throw new Error(response.message || response.error || 'Login failed');
           }
 
@@ -44,6 +64,21 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
         } catch (error) {
+          // Don't set error state if the error message indicates success
+          if (error instanceof Error && error.message === 'Login successful') {
+            set({
+              isLoading: false,
+              isAuthenticated: true,
+            });
+            
+            // Try to load user data
+            setTimeout(() => {
+              get().loadUser();
+            }, 100);
+            
+            return;
+          }
+          
           set({
             error: error instanceof Error ? error.message : 'An unexpected error occurred',
             isLoading: false,
@@ -108,25 +143,45 @@ export const useAuthStore = create<AuthState>()(
             throw new Error('No authentication token found.');
           }
           
+          console.log('Attempting to load user profile with token:', token.substring(0, 10) + '...');
+          
           // Attempt to fetch the current user profile
           const response = await authServiceInstance.getCurrentUser();
           
-          if (response.status !== 200 || !response.data) {
-            // API call failed (e.g., token expired, server error)
-            throw new Error(response.message || response.error || 'Failed to load user profile.');
-          }
+          console.log('User profile response:', response);
           
-          // Success!
-          isAuthenticatedUpdate = true;
-          userUpdate = response.data;
+          // Handle two different possible response structures:
+          // 1. Standard structure: response.data contains the user
+          // 2. Alternate structure: response.user contains the user directly
+          if (response.data) {
+            userUpdate = response.data;
+            isAuthenticatedUpdate = true;
+          } else if (response.user) {
+            // The user data is directly in the response.user property
+            userUpdate = response.user;
+            isAuthenticatedUpdate = true;
+          } else if (!response.success) {
+            // No user data and not marked as successful
+            throw new Error(response.message || response.error || 'Failed to load user profile.');
+          } else {
+            // Success is true but no user data
+            throw new Error('User data missing from response.');
+          }
 
         } catch (error) {
           // Any error during the process means not authenticated
           authServiceInstance.clearAuth(); // Ensure token/user removed from storage
           isAuthenticatedUpdate = false;
           userUpdate = null;
-          errorUpdate = error instanceof Error ? error.message : 'Failed to authenticate session.';
-          console.error('loadUser failed:', errorUpdate); // Log the error
+          
+          // More detailed error logging
+          if (error instanceof Error) {
+            errorUpdate = error.message;
+            console.error('loadUser failed:', errorUpdate, error.stack);
+          } else {
+            errorUpdate = 'Failed to authenticate session.';
+            console.error('loadUser failed with unknown error:', error);
+          }
 
         } finally {
           // Always update the state at the end, ensuring isLoading is false

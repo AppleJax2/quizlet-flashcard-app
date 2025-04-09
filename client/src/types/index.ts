@@ -4,10 +4,13 @@ export * from './processor';
 export * from './api';
 
 export interface ApiResponse<T> {
-  data: T;
+  data?: T;
   message?: string;
   error?: string;
   status: number;
+  success?: boolean;
+  token?: string;
+  user?: any;
 }
 
 export interface PaginatedResponse<T> {
