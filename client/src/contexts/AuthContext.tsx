@@ -18,7 +18,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  signup: (email: string, password: string, username: string) => Promise<void>;
+  signup: (email: string, password: string, username: string, confirmPassword?: string) => Promise<void>;
   loading: boolean;
   error: string | null;
 }
@@ -81,10 +81,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signup = async (email: string, password: string, username: string) => {
+  const signup = async (email: string, password: string, username: string, confirmPassword?: string) => {
     try {
       setError(null);
-      const response = await apiClient.post<AuthResponse>('/auth/register', { email, password, username });
+      const response = await apiClient.post<AuthResponse>('/auth/register', { email, password, username, confirmPassword });
       if (response.error) {
         setError(response.error.message || 'An error occurred during signup');
         throw new Error(response.error.message);
