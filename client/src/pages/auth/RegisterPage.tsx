@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -16,6 +16,7 @@ type RegisterFormValues = z.infer<typeof registerFormSchema>;
 
 export default function RegisterPage() {
   const { signup, error: apiError, loading: isLoading } = useAuth();
+  const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
   
   const {
@@ -52,6 +53,7 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormValues) => {
     try {
       await signup(data.email, data.password, data.username, data.confirmPassword);
+      navigate('/dashboard');
     } catch (error: any) {
       // The error is already set in AuthContext, no need to do anything else here
       // Just log for debugging in non-production
