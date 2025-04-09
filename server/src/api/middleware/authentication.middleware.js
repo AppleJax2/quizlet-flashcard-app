@@ -3,6 +3,7 @@ const { StatusCodes } = require('http-status-codes');
 const env = require('../../config/env');
 const { User } = require('../models');
 const { errors } = require('../utils');
+const redisService = require('../../services/redis.service');
 
 /**
  * Authentication middleware to protect routes
@@ -21,6 +22,12 @@ const authenticationMiddleware = async (req, res, next) => {
   const token = authHeader.split(' ')[1];
   
   try {
+    // Check if token is blacklisted
+    const isBlacklisted = await redisService.isTokenBlacklisted(token);
+    if (isBlacklisted) {
+      return next(new errors.UnauthenticatedError('Token has been revoked'));
+    }
+
     // Verify the token
     const payload = jwt.verify(token, env.JWT_SECRET);
     
@@ -35,6 +42,11 @@ const authenticationMiddleware = async (req, res, next) => {
     if (!user) {
       return next(new errors.UnauthenticatedError('User no longer exists'));
     }
+
+    // Check if user is active
+    if (!user.active) {
+      return next(new errors.UnauthenticatedError('Account is deactivated'));
+    }
     
     // Attach user info to request object
     req.user = {
@@ -43,6 +55,9 @@ const authenticationMiddleware = async (req, res, next) => {
       email: payload.email,
       role: payload.role || 'user',
     };
+
+    // Attach token to request for potential blacklisting
+    req.token = token;
     
     next();
   } catch (error) {
@@ -74,6 +89,12 @@ const optionalAuthMiddleware = async (req, res, next) => {
   const token = authHeader.split(' ')[1];
   
   try {
+    // Check if token is blacklisted
+    const isBlacklisted = await redisService.isTokenBlacklisted(token);
+    if (isBlacklisted) {
+      return next();
+    }
+
     // Verify the token
     const payload = jwt.verify(token, env.JWT_SECRET);
     
@@ -85,7 +106,7 @@ const optionalAuthMiddleware = async (req, res, next) => {
     
     // Check if user still exists (optional)
     const user = await User.findById(payload.userId).select('-password');
-    if (user) {
+    if (user && user.active) {
       // Attach user info to request object
       req.user = {
         userId: payload.userId,
@@ -93,6 +114,8 @@ const optionalAuthMiddleware = async (req, res, next) => {
         email: payload.email,
         role: payload.role || 'user',
       };
+      // Attach token to request
+      req.token = token;
     }
   } catch (error) {
     // Token invalid, but continue anyway since auth is optional

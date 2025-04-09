@@ -4,44 +4,39 @@ const mongoose = require('mongoose');
  * Flashcard Schema - embedded in FlashcardSet
  */
 const FlashcardSchema = new mongoose.Schema({
-  front: {
+  term: {
     type: String,
-    required: [true, 'Front content is required'],
+    required: [true, 'Term is required'],
     trim: true,
-    maxlength: [2000, 'Front content cannot exceed 2000 characters'],
+    maxlength: [500, 'Term cannot exceed 500 characters']
   },
-  back: {
+  definition: {
     type: String,
-    required: [true, 'Back content is required'],
+    required: [true, 'Definition is required'],
     trim: true,
-    maxlength: [2000, 'Back content cannot exceed 2000 characters'],
+    maxlength: [2000, 'Definition cannot exceed 2000 characters']
   },
+  examples: [{
+    type: String,
+    trim: true,
+    maxlength: [1000, 'Example cannot exceed 1000 characters']
+  }],
   imageUrl: {
     type: String,
+    trim: true,
     validate: {
       validator: function(v) {
-        // Allow null or valid URL format
-        return v === null || v === '' || /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(v);
+        return !v || /^https?:\/\/.+/.test(v);
       },
-      message: props => `${props.value} is not a valid URL`,
-    },
+      message: 'Invalid image URL format'
+    }
   },
-  difficulty: {
-    type: String,
-    enum: ['easy', 'medium', 'hard'],
-    default: 'medium',
-  },
-  tags: [{
-    type: String,
-    trim: true,
-  }],
-  metadata: {
-    type: Map,
-    of: String,
-    default: {},
-  },
-}, {
-  timestamps: true,
+  confidence: {
+    type: Number,
+    min: [0, 'Confidence cannot be less than 0'],
+    max: [1, 'Confidence cannot be greater than 1'],
+    default: 0
+  }
 });
 
 /**
@@ -53,62 +48,80 @@ const FlashcardSetSchema = new mongoose.Schema({
     required: [true, 'Title is required'],
     trim: true,
     maxlength: [200, 'Title cannot exceed 200 characters'],
+    index: true
   },
   description: {
     type: String,
-    required: [true, 'Description is required'],
     trim: true,
-    maxlength: [1000, 'Description cannot exceed 1000 characters'],
+    maxlength: [2000, 'Description cannot exceed 2000 characters']
   },
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: [true, 'User ID is required'],
-    index: true,
-  },
-  flashcards: {
-    type: [FlashcardSchema],
-    required: [true, 'At least one flashcard is required'],
-    validate: {
-      validator: function(v) {
-        return Array.isArray(v) && v.length > 0;
-      },
-      message: 'At least one flashcard is required',
-    },
+  subject: {
+    type: String,
+    trim: true,
+    maxlength: [100, 'Subject cannot exceed 100 characters'],
+    index: true
   },
   tags: [{
     type: String,
     trim: true,
+    maxlength: [50, 'Tag cannot exceed 50 characters']
   }],
-  isPublic: {
-    type: Boolean,
-    default: false,
-  },
-  sourceType: {
+  visibility: {
     type: String,
-    enum: ['manual', 'text', 'pdf', 'url', 'docx', 'image'],
-    default: 'manual',
+    enum: {
+      values: ['private', 'public', 'shared'],
+      message: '{VALUE} is not a valid visibility setting'
+    },
+    default: 'private',
+    index: true
   },
-  sourceReference: {
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'Owner is required'],
+    index: true
+  },
+  collaborators: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    role: {
+      type: String,
+      enum: ['viewer', 'editor'],
+      default: 'viewer'
+    },
+    addedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  flashcards: [FlashcardSchema],
+  sourceDocument: {
     type: String,
-    trim: true,
+    trim: true
   },
-  language: {
-    type: String,
-    trim: true,
-    lowercase: true,
-    default: 'english',
+  lastStudied: {
+    type: Date
   },
-  complexity: {
-    type: String,
-    enum: ['simple', 'medium', 'advanced'],
-    default: 'medium',
-  },
-  metadata: {
-    type: Map,
-    of: String,
-    default: {},
-  },
+  studyStats: {
+    totalReviews: {
+      type: Number,
+      default: 0
+    },
+    correctReviews: {
+      type: Number,
+      default: 0
+    },
+    averageConfidence: {
+      type: Number,
+      default: 0
+    },
+    lastReviewDate: {
+      type: Date
+    }
+  }
 }, {
   timestamps: true,
   toJSON: {
@@ -121,57 +134,82 @@ const FlashcardSetSchema = new mongoose.Schema({
   }
 });
 
-// Add indexes for optimized queries
-FlashcardSetSchema.index({ userId: 1, createdAt: -1 });
-FlashcardSetSchema.index({ isPublic: 1, createdAt: -1 });
-FlashcardSetSchema.index({ tags: 1 });
+// Compound indexes for common query patterns
+FlashcardSetSchema.index({ owner: 1, visibility: 1 }); // Find user's sets by visibility
+FlashcardSetSchema.index({ visibility: 1, subject: 1, createdAt: -1 }); // Find public sets by subject
+FlashcardSetSchema.index({ 'collaborators.user': 1, visibility: 1 }); // Find sets user can collaborate on
+FlashcardSetSchema.index({ tags: 1, visibility: 1 }); // Find sets by tags and visibility
+FlashcardSetSchema.index({ title: 'text', description: 'text', subject: 'text', tags: 'text' }); // Full-text search
+
+// Add TTL index for inactive private sets (optional, uncomment if needed)
+// FlashcardSetSchema.index({ lastStudied: 1 }, { expireAfterSeconds: 180 * 24 * 60 * 60 }); // 180 days
 
 /**
- * Calculate statistics for the flashcard set
- * @returns {Object} - Statistics object
+ * Pre-save middleware to update study stats
  */
-FlashcardSetSchema.methods.getStatistics = function() {
-  const flashcardCount = this.flashcards.length;
+FlashcardSetSchema.pre('save', function(next) {
+  if (this.isModified('flashcards')) {
+    const totalConfidence = this.flashcards.reduce((sum, card) => sum + (card.confidence || 0), 0);
+    this.studyStats.averageConfidence = this.flashcards.length > 0 
+      ? totalConfidence / this.flashcards.length 
+      : 0;
+  }
+  next();
+});
+
+/**
+ * Instance method to check if user has access
+ */
+FlashcardSetSchema.methods.hasAccess = function(userId, requiredRole = 'viewer') {
+  // Owner has full access
+  if (this.owner.equals(userId)) return true;
   
-  const difficultyMap = this.flashcards.reduce((acc, card) => {
-    acc[card.difficulty] = (acc[card.difficulty] || 0) + 1;
-    return acc;
-  }, {});
+  // Check collaborator access
+  const collaborator = this.collaborators.find(c => c.user.equals(userId));
+  if (!collaborator) return false;
   
-  // Calculate average front/back content length
-  const avgFrontLength = this.flashcards.reduce((sum, card) => sum + card.front.length, 0) / flashcardCount;
-  const avgBackLength = this.flashcards.reduce((sum, card) => sum + card.back.length, 0) / flashcardCount;
+  // For viewer role, any collaborator has access
+  if (requiredRole === 'viewer') return true;
   
-  // Calculate how many cards have images
-  const cardsWithImages = this.flashcards.filter(card => card.imageUrl).length;
-  
-  return {
-    flashcardCount,
-    difficulty: difficultyMap,
-    avgFrontLength: Math.round(avgFrontLength),
-    avgBackLength: Math.round(avgBackLength),
-    cardsWithImages,
-    cardsWithImagesPercentage: Math.round((cardsWithImages / flashcardCount) * 100),
-  };
+  // For editor role, check if collaborator is an editor
+  return collaborator.role === 'editor';
 };
 
 /**
- * Get a summary of the flashcard set
- * @returns {Object} - Summary object
+ * Static method to find accessible sets
  */
-FlashcardSetSchema.methods.getSummary = function() {
+FlashcardSetSchema.statics.findAccessible = async function(userId, options = {}) {
+  const { subject, tags, search, sort = '-createdAt', page = 1, limit = 10 } = options;
+  
+  const query = {
+    $or: [
+      { owner: userId },
+      { 'collaborators.user': userId },
+      { visibility: 'public' }
+    ]
+  };
+  
+  if (subject) query.subject = subject;
+  if (tags?.length) query.tags = { $all: tags };
+  if (search) query.$text = { $search: search };
+  
+  const sets = await this.find(query)
+    .sort(sort)
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .populate('owner', 'username')
+    .populate('collaborators.user', 'username');
+    
+  const total = await this.countDocuments(query);
+  
   return {
-    id: this._id,
-    title: this.title,
-    description: this.description,
-    userId: this.userId,
-    flashcardCount: this.flashcards.length,
-    tags: this.tags,
-    isPublic: this.isPublic,
-    language: this.language,
-    complexity: this.complexity,
-    createdAt: this.createdAt,
-    updatedAt: this.updatedAt,
+    sets,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit)
+    }
   };
 };
 

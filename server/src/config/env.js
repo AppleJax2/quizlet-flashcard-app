@@ -1,134 +1,129 @@
-const dotenv = require('dotenv');
-const path = require('path');
-const fs = require('fs');
-
-// Determine environment
-const NODE_ENV = process.env.NODE_ENV || 'development';
-
-// Load environment-specific .env file if it exists
-const envPath = path.resolve(process.cwd(), `.env.${NODE_ENV}`);
-const fallbackPath = path.resolve(process.cwd(), '.env');
-
-// Try environment-specific file first, then fallback to default
-if (fs.existsSync(envPath)) {
-  dotenv.config({ path: envPath });
-} else if (fs.existsSync(fallbackPath)) {
-  dotenv.config({ path: fallbackPath });
-}
+const { cleanEnv, str, num, bool, url } = require('envalid');
 
 /**
  * Environment configuration with validation
  */
-const env = {
+const env = cleanEnv(process.env, {
+  // Node environment
+  NODE_ENV: str({
+    choices: ['development', 'test', 'production'],
+    default: 'development'
+  }),
+  
   // Server configuration
-  NODE_ENV,
-  PORT: parseInt(process.env.PORT || '5000', 10),
-  API_PREFIX: process.env.API_PREFIX || '/api/v1',
-  HOST: process.env.HOST || 'localhost',
+  PORT: num({
+    default: 3000,
+    desc: 'Port to run the server on'
+  }),
+  API_PREFIX: str({
+    default: '/api/v1',
+    desc: 'API route prefix'
+  }),
   
-  // MongoDB connection
-  MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/quizlet-flashcard-generator',
+  // MongoDB configuration
+  MONGODB_URI: url({
+    desc: 'MongoDB connection string'
+  }),
   
-  // Allowed origins for CORS (comma-separated in env)
-  ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000'],
+  // Redis configuration
+  REDIS_URL: url({
+    desc: 'Redis connection string',
+    default: 'redis://localhost:6379'
+  }),
+  REDIS_PASSWORD: str({
+    desc: 'Redis password',
+    default: ''
+  }),
   
-  // JWT Authentication
-  JWT_SECRET: process.env.JWT_SECRET,
-  JWT_LIFETIME: process.env.JWT_LIFETIME || '1d',
-  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
-  JWT_REFRESH_LIFETIME: process.env.JWT_REFRESH_LIFETIME || '7d',
+  // JWT configuration
+  JWT_SECRET: str({
+    desc: 'Secret key for JWT signing',
+    example: 'super-secret-key-change-me'
+  }),
+  JWT_LIFETIME: str({
+    default: '1d',
+    desc: 'JWT token lifetime'
+  }),
   
-  // API Rate limiting
-  RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // 15 minutes
-  RATE_LIMIT_MAX: parseInt(process.env.RATE_LIMIT_MAX || '100', 10), // 100 requests per window
-  AUTH_RATE_LIMIT_MAX: parseInt(process.env.AUTH_RATE_LIMIT_MAX || '30', 10), // 30 auth requests per window
+  // Rate limiting
+  RATE_LIMIT_WINDOW_MS: num({
+    default: 15 * 60 * 1000,
+    desc: 'Rate limit window in milliseconds'
+  }),
+  RATE_LIMIT_MAX: num({
+    default: 100,
+    desc: 'Maximum requests per window'
+  }),
   
-  // File upload limits
-  MAX_FILE_SIZE_MB: parseInt(process.env.MAX_FILE_SIZE_MB || '50', 10), // 50MB in megabytes
-  UPLOAD_PATH: process.env.UPLOAD_PATH || path.join(process.cwd(), 'uploads'),
-  
-  // Logging
-  LOG_LEVEL: process.env.LOG_LEVEL || (NODE_ENV === 'production' ? 'info' : 'debug'),
-  
-  // Resource limits
-  TASK_TIMEOUT_MS: parseInt(process.env.TASK_TIMEOUT_MS || '300000', 10), // 5 minutes
-  TASK_EXPIRY_MS: parseInt(process.env.TASK_EXPIRY_MS || '86400000', 10), // 24 hours
+  // File upload
+  MAX_FILE_SIZE: num({
+    default: 5 * 1024 * 1024,
+    desc: 'Maximum file size in bytes'
+  }),
+  UPLOAD_DIR: str({
+    default: 'uploads',
+    desc: 'Directory for file uploads'
+  }),
   
   // Security
-  BCRYPT_SALT_ROUNDS: parseInt(process.env.BCRYPT_SALT_ROUNDS || '12', 10),
+  CORS_ORIGIN: str({
+    default: '*',
+    desc: 'CORS allowed origin'
+  }),
+  ENABLE_HTTPS: bool({
+    default: false,
+    desc: 'Enable HTTPS'
+  }),
   
-  // Validation and sanity checks
-  validate() {
-    const requiredVars = [
-      'JWT_SECRET',
-    ];
-    
-    const missing = requiredVars.filter(name => !this[name]);
-    
-    if (missing.length > 0) {
-      throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
-    }
-    
-    // Validate MongoDB URI
-    if (!this.MONGODB_URI.startsWith('mongodb://') && !this.MONGODB_URI.startsWith('mongodb+srv://')) {
-      throw new Error('MONGODB_URI must be a valid MongoDB connection string');
-    }
-    
-    // Validate port range
-    if (this.PORT < 0 || this.PORT > 65535) {
-      throw new Error('PORT must be between 0-65535');
-    }
-    
-    // Validate rate limit values
-    if (this.RATE_LIMIT_WINDOW_MS < 0) {
-      throw new Error('RATE_LIMIT_WINDOW_MS must be a positive number');
-    }
-    
-    if (this.RATE_LIMIT_MAX < 0) {
-      throw new Error('RATE_LIMIT_MAX must be a positive number');
-    }
-    
-    // Create upload directory if it doesn't exist
-    if (!fs.existsSync(this.UPLOAD_PATH)) {
-      fs.mkdirSync(this.UPLOAD_PATH, { recursive: true });
-    }
-    
-    return this;
-  },
+  // Logging
+  LOG_LEVEL: str({
+    choices: ['error', 'warn', 'info', 'debug'],
+    default: 'info',
+    desc: 'Logging level'
+  }),
+  LOG_TO_FILE: bool({
+    default: false,
+    desc: 'Enable file logging'
+  }),
+  LOG_DIR: str({
+    default: 'logs',
+    desc: 'Directory for log files'
+  }),
   
-  /**
-   * Determines if the application is running in production
-   * @returns {boolean}
-   */
-  isProduction() {
-    return this.NODE_ENV === 'production';
-  },
+  // Email (optional)
+  SMTP_HOST: str({
+    default: '',
+    desc: 'SMTP server host'
+  }),
+  SMTP_PORT: num({
+    default: 587,
+    desc: 'SMTP server port'
+  }),
+  SMTP_USER: str({
+    default: '',
+    desc: 'SMTP server username'
+  }),
+  SMTP_PASS: str({
+    default: '',
+    desc: 'SMTP server password'
+  }),
   
-  /**
-   * Determines if the application is running in development
-   * @returns {boolean}
-   */
-  isDevelopment() {
-    return this.NODE_ENV === 'development';
-  },
+  // Cache configuration
+  CACHE_TTL: num({
+    default: 3600,
+    desc: 'Cache TTL in seconds'
+  }),
   
-  /**
-   * Determines if the application is running in test mode
-   * @returns {boolean}
-   */
-  isTest() {
-    return this.NODE_ENV === 'test';
-  },
-  
-  /**
-   * Get the app's base URL
-   * @returns {string} - Base URL for the application
-   */
-  getBaseUrl() {
-    const port = this.PORT !== 80 && this.PORT !== 443 ? `:${this.PORT}` : '';
-    const protocol = this.isProduction() ? 'https' : 'http';
-    return `${protocol}://${this.HOST}${port}`;
-  }
-};
+  // Session configuration
+  SESSION_SECRET: str({
+    default: 'session-secret-change-me',
+    desc: 'Session secret key'
+  }),
+});
+
+// Helper methods
+env.isDevelopment = () => env.NODE_ENV === 'development';
+env.isTest = () => env.NODE_ENV === 'test';
+env.isProduction = () => env.NODE_ENV === 'production';
 
 module.exports = env; 

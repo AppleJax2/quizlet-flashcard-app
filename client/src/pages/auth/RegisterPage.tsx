@@ -163,7 +163,7 @@ export default function RegisterPage() {
                 label="Password"
                 type="password"
                 error={errors.password?.message}
-                hint="At least 8 characters with uppercase, lowercase and numbers"
+                hint="At least 8 characters with uppercase, lowercase, numbers, and special characters (@$!%*?&)"
                 leftIcon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-secondary-400">
                   <path fillRule="evenodd" d="M15.75 1.5a6.75 6.75 0 00-6.651 7.906c.067.39-.032.717-.221.906l-6.5 6.499a3 3 0 00-.878 2.121v2.818c0 .414.336.75.75.75H6a.75.75 0 00.75-.75v-1.5h1.5A.75.75 0 009 19.5V18h1.5a.75.75 0 00.75-.75V15h1.5a.75.75 0 00.75-.75v-1.5h1.5a.75.75 0 00.75-.75V9.03a8.358 8.358 0 00.091-1.53A6.75 6.75 0 0015.75 1.5zm-3 8.25a3.75 3.75 0 117.5 0 3.75 3.75 0 01-7.5 0z" clipRule="evenodd" />
                 </svg>}

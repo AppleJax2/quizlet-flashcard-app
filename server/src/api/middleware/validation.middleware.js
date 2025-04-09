@@ -28,11 +28,9 @@ const validateRequest = (schema, property = 'body') => {
     });
     
     if (error) {
-      // Direct console logging for validation errors
-      console.log('====================== VALIDATION ERROR ======================');
-      console.log('Request payload:', JSON.stringify(dataToValidate, null, 2));
-      console.log('Validation errors:', JSON.stringify(error.details, null, 2));
-      console.log('============================================================');
+      // Log the detailed validation errors from Joi
+      logger.error('Joi validation failed for property:', property);
+      logger.error('Joi validation details:', JSON.stringify(error.details, null, 2));
 
       // Extract and format validation errors
       const validationErrors = error.details.map(detail => ({

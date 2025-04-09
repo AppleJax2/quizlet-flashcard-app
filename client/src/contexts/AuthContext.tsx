@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AxiosError } from 'axios';
-import apiClient, { ApiResponse } from '../api/apiClient';
+import apiClient from '../api/apiClient';
 
 interface User {
   id: string;
@@ -21,10 +20,6 @@ interface AuthContextType {
   signup: (email: string, password: string, username: string, confirmPassword: string) => Promise<void>;
   loading: boolean;
   error: string | null;
-}
-
-interface ApiError {
-  message: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
